@@ -484,7 +484,7 @@ def multiscale_segment(image, predictor, point, scales=[0.5, 1.0, 2.0]):
 
 ```python
 import tensorrt as trt
-import pycuda.driver as cuda
+import pycuda.djue as cuda
 import pycuda.autoinit
 
 def export_to_tensorrt(onnx_path, engine_path, fp16=True):

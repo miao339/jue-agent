@@ -12,11 +12,11 @@ import uuid
 from datetime import datetime
 from pathlib import Path
 
-from hermes_constants import get_hermes_home
+from jue_constants import get_jue_home
 from hermes_cli.env_loader import load_hermes_dotenv
 
-_hermes_home = get_hermes_home()
-load_hermes_dotenv(hermes_home=_hermes_home, project_env=Path(__file__).parent.parent / ".env")
+_jue_home = get_jue_home()
+load_hermes_dotenv(jue_home=_jue_home, project_env=Path(__file__).parent.parent / ".env")
 
 try:
     from hermes_cli.banner import prefetch_update_check
@@ -35,7 +35,7 @@ _stdout_lock = threading.Lock()
 _cfg_lock = threading.Lock()
 _cfg_cache: dict | None = None
 _cfg_mtime: float | None = None
-_SLASH_WORKER_TIMEOUT_S = max(5.0, float(os.environ.get("HERMES_TUI_SLASH_TIMEOUT_S", "45") or 45))
+_SLASH_WORKER_TIMEOUT_S = max(5.0, float(os.environ.get("JUE_TUI_SLASH_TIMEOUT_S", "45") or 45))
 
 # ── Async RPC dispatch (#12546) ──────────────────────────────────────
 # A handful of handlers block the dispatcher loop in entry.py for seconds
@@ -58,7 +58,7 @@ _LONG_HANDLERS = frozenset(
 )
 
 _pool = concurrent.futures.ThreadPoolExecutor(
-    max_workers=max(2, int(os.environ.get("HERMES_TUI_RPC_POOL_WORKERS", "4") or 4)),
+    max_workers=max(2, int(os.environ.get("JUE_TUI_RPC_POOL_WORKERS", "4") or 4)),
     thread_name_prefix="tui-rpc",
 )
 atexit.register(lambda: _pool.shutdown(wait=False, cancel_futures=True))
@@ -71,7 +71,7 @@ sys.stdout = sys.stderr
 
 
 class _SlashWorker:
-    """Persistent HermesCLI subprocess for slash commands."""
+    """Persistent JueCLI subprocess for slash commands."""
 
     def __init__(self, session_key: str, model: str):
         self._lock = threading.Lock()
@@ -149,7 +149,7 @@ atexit.register(lambda: [
 def _get_db():
     global _db
     if _db is None:
-        from hermes_state import SessionDB
+        from jue_state import SessionDB
         _db = SessionDB()
     return _db
 
@@ -283,7 +283,7 @@ def _load_cfg() -> dict:
     global _cfg_cache, _cfg_mtime
     try:
         import yaml
-        p = _hermes_home / "config.yaml"
+        p = _jue_home / "config.yaml"
         mtime = p.stat().st_mtime if p.exists() else None
         with _cfg_lock:
             if _cfg_cache is not None and _cfg_mtime == mtime:
@@ -305,7 +305,7 @@ def _load_cfg() -> dict:
 def _save_cfg(cfg: dict):
     global _cfg_cache, _cfg_mtime
     import yaml
-    path = _hermes_home / "config.yaml"
+    path = _jue_home / "config.yaml"
     with open(path, "w") as f:
         yaml.safe_dump(cfg, f)
     with _cfg_lock:
@@ -336,9 +336,9 @@ def _clear_session_context(tokens: list) -> None:
 
 def _enable_gateway_prompts() -> None:
     """Route approvals through gateway callbacks instead of CLI input()."""
-    os.environ["HERMES_GATEWAY_SESSION"] = "1"
-    os.environ["HERMES_EXEC_ASK"] = "1"
-    os.environ["HERMES_INTERACTIVE"] = "1"
+    os.environ["JUE_GATEWAY_SESSION"] = "1"
+    os.environ["JUE_EXEC_ASK"] = "1"
+    os.environ["JUE_INTERACTIVE"] = "1"
 
 
 # ── Blocking prompt factory ──────────────────────────────────────────
@@ -390,7 +390,7 @@ def resolve_skin() -> dict:
 
 
 def _resolve_model() -> str:
-    env = os.environ.get("HERMES_MODEL", "")
+    env = os.environ.get("JUE_MODEL", "")
     if env:
         return env
     m = _load_cfg().get("model", "")
@@ -414,7 +414,7 @@ def _write_config_key(key_path: str, value):
 
 
 def _load_reasoning_config() -> dict | None:
-    from hermes_constants import parse_reasoning_effort
+    from jue_constants import parse_reasoning_effort
 
     effort = str(_load_cfg().get("agent", {}).get("reasoning_effort", "") or "").strip()
     return parse_reasoning_effort(effort)
@@ -537,13 +537,13 @@ def _apply_model_switch(sid: str, session: dict, raw_input: str) -> dict:
         _restart_slash_worker(session)
         _emit("session.info", sid, _session_info(agent))
 
-    os.environ["HERMES_MODEL"] = result.new_model
+    os.environ["JUE_MODEL"] = result.new_model
     # Keep the process-level provider env var in sync with the user's explicit
     # choice so any ambient re-resolution (credential pool refresh, compressor
     # rebuild, aux clients) resolves to the new provider instead of the
     # original one persisted in config or env.
     if result.target_provider:
-        os.environ["HERMES_INFERENCE_PROVIDER"] = result.target_provider
+        os.environ["JUE_INFERENCE_PROVIDER"] = result.target_provider
     if persist_global:
         _persist_model_switch(result)
     return {"value": result.new_model, "warning": result.warning_message or ""}
@@ -1391,7 +1391,7 @@ def _(rid, params: dict) -> dict:
     if err:
         return err
     import time as _time
-    filename = os.path.abspath(f"hermes_conversation_{_time.strftime('%Y%m%d_%H%M%S')}.json")
+    filename = os.path.abspath(f"jue_conversation_{_time.strftime('%Y%m%d_%H%M%S')}.json")
     try:
         with open(filename, "w") as f:
             json.dump({"model": getattr(session["agent"], "model", ""), "messages": session.get("history", [])},
@@ -1650,7 +1650,7 @@ def _(rid, params: dict) -> dict:
         return _err(rid, 5027, f"clipboard unavailable: {e}")
 
     session["image_counter"] = session.get("image_counter", 0) + 1
-    img_dir = _hermes_home / "images"
+    img_dir = _jue_home / "images"
     img_dir.mkdir(parents=True, exist_ok=True)
     img_path = img_dir / f"clip_{datetime.now().strftime('%Y%m%d_%H%M%S')}_{session['image_counter']}.png"
 
@@ -1918,12 +1918,12 @@ def _(rid, params: dict) -> dict:
                     enable_session_yolo(session["session_key"])
                     nv = "1"
             else:
-                current = bool(os.environ.get("HERMES_YOLO_MODE"))
+                current = bool(os.environ.get("JUE_YOLO_MODE"))
                 if current:
-                    os.environ.pop("HERMES_YOLO_MODE", None)
+                    os.environ.pop("JUE_YOLO_MODE", None)
                     nv = "0"
                 else:
-                    os.environ["HERMES_YOLO_MODE"] = "1"
+                    os.environ["JUE_YOLO_MODE"] = "1"
                     nv = "1"
             return _ok(rid, {"key": key, "value": nv})
         except Exception as e:
@@ -1931,7 +1931,7 @@ def _(rid, params: dict) -> dict:
 
     if key == "reasoning":
         try:
-            from hermes_constants import parse_reasoning_effort
+            from jue_constants import parse_reasoning_effort
 
             arg = str(value or "").strip().lower()
             if arg in ("show", "on"):
@@ -2039,8 +2039,8 @@ def _(rid, params: dict) -> dict:
         except Exception as e:
             return _err(rid, 5013, str(e))
     if key == "profile":
-        from hermes_constants import display_hermes_home
-        return _ok(rid, {"home": str(_hermes_home), "display": display_hermes_home()})
+        from jue_constants import display_jue_home
+        return _ok(rid, {"home": str(_jue_home), "display": display_jue_home()})
     if key == "full":
         return _ok(rid, {"config": _load_cfg()})
     if key == "prompt":
@@ -2076,7 +2076,7 @@ def _(rid, params: dict) -> dict:
         on = bool(_load_cfg().get("display", {}).get("tui_statusbar", True))
         return _ok(rid, {"value": "on" if on else "off"})
     if key == "mtime":
-        cfg_path = _hermes_home / "config.yaml"
+        cfg_path = _jue_home / "config.yaml"
         try:
             return _ok(rid, {"mtime": cfg_path.stat().st_mtime if cfg_path.exists() else 0})
         except Exception:
@@ -2232,16 +2232,16 @@ def _(rid, params: dict) -> dict:
 def _cli_exec_blocked(argv: list[str]) -> str | None:
     """Return user hint if this argv must not run headless in the gateway process."""
     if not argv:
-        return "bare `hermes` is interactive — use `/hermes chat -q …` or run `hermes` in another terminal"
+        return "bare `jue` is interactive — use `/jue chat -q …` or run `jue` in another terminal"
     a0 = argv[0].lower()
     if a0 == "setup":
-        return "`hermes setup` needs a full terminal — run it outside the TUI"
+        return "`jue setup` needs a full terminal — run it outside the TUI"
     if a0 == "gateway":
-        return "`hermes gateway` is long-running — run it in another terminal"
+        return "`jue gateway` is long-running — run it in another terminal"
     if a0 == "sessions" and len(argv) > 1 and argv[1].lower() == "browse":
-        return "`hermes sessions browse` is interactive — use /resume here, or run browse in another terminal"
+        return "`jue sessions browse` is interactive — use /resume here, or run browse in another terminal"
     if a0 == "config" and len(argv) > 1 and argv[1].lower() == "edit":
-        return "`hermes config edit` needs $EDITOR in a real terminal"
+        return "`jue config edit` needs $EDITOR in a real terminal"
     return None
 
 
@@ -2419,7 +2419,7 @@ def _(rid, params: dict) -> dict:
 
     _paste_counter += 1
     line_count = text.count('\n') + 1
-    paste_dir = _hermes_home / "pastes"
+    paste_dir = _jue_home / "pastes"
     paste_dir.mkdir(parents=True, exist_ok=True)
 
     from datetime import datetime
@@ -2560,7 +2560,7 @@ def _(rid, params: dict) -> dict:
         current_provider = getattr(agent, "provider", "") or ""
         current_model = getattr(agent, "model", "") or _resolve_model()
         # list_authenticated_providers already populates each provider's
-        # "models" with the curated list (same source as `hermes model` and
+        # "models" with the curated list (same source as `jue model` and
         # classic CLI's /model picker). Do NOT overwrite with live
         # provider_model_ids() — that bypasses curation and pulls in
         # non-agentic models (e.g. Nous /models returns ~400 IDs including
@@ -2690,13 +2690,13 @@ def _(rid, params: dict) -> dict:
 def _(rid, params: dict) -> dict:
     action = params.get("action", "status")
     if action == "status":
-        env = os.environ.get("HERMES_VOICE", "").strip()
+        env = os.environ.get("JUE_VOICE", "").strip()
         if env in {"0", "1"}:
             return _ok(rid, {"enabled": env == "1"})
         return _ok(rid, {"enabled": bool(_load_cfg().get("display", {}).get("voice_enabled", False))})
     if action in ("on", "off"):
         enabled = action == "on"
-        os.environ["HERMES_VOICE"] = "1" if enabled else "0"
+        os.environ["JUE_VOICE"] = "1" if enabled else "0"
         _write_config_key("display.voice_enabled", enabled)
         return _ok(rid, {"enabled": action == "on"})
     return _err(rid, 4013, f"unknown voice action: {action}")
@@ -2893,9 +2893,9 @@ def _(rid, params: dict) -> dict:
     try:
         cfg = _load_cfg()
         model = _resolve_model()
-        api_key = os.environ.get("HERMES_API_KEY", "") or cfg.get("api_key", "")
+        api_key = os.environ.get("JUE_API_KEY", "") or cfg.get("api_key", "")
         masked = f"****{api_key[-4:]}" if len(api_key) > 4 else "(not set)"
-        base_url = os.environ.get("HERMES_BASE_URL", "") or cfg.get("base_url", "")
+        base_url = os.environ.get("JUE_BASE_URL", "") or cfg.get("base_url", "")
 
         sections = [{
             "title": "Model",
@@ -2915,7 +2915,7 @@ def _(rid, params: dict) -> dict:
             "title": "Environment",
             "rows": [
                 ["Working Dir", os.getcwd()],
-                ["Config File", str(_hermes_home / "config.yaml")],
+                ["Config File", str(_jue_home / "config.yaml")],
             ]
         }]
         return _ok(rid, {"sections": sections})

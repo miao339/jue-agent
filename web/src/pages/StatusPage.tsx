@@ -32,7 +32,7 @@ import { useI18n } from "@/i18n";
 
 const ACTION_NAMES: Record<"restart" | "update", string> = {
   restart: "gateway-restart",
-  update: "hermes-update",
+  update: "jue-update",
 };
 
 export default function StatusPage() {
@@ -117,7 +117,7 @@ export default function StatusPage() {
       if (action === "restart") {
         await api.restartGateway();
       } else {
-        await api.updateHermes();
+        await api.updateJue();
       }
       setActiveAction(action);
     } catch (err) {
@@ -348,8 +348,8 @@ export default function StatusPage() {
               />
 
               {activeAction === "update" && actionStatus?.running
-                ? t.status.updatingHermes
-                : t.status.updateHermes}
+                ? t.status.updatingJue
+                : t.status.updateJue}
             </Button>
           </div>
         </Cell>
@@ -372,7 +372,7 @@ export default function StatusPage() {
               <span className="text-xs font-mondwest tracking-[0.12em] truncate">
                 {activeAction === "restart"
                   ? t.status.restartGateway
-                  : t.status.updateHermes}
+                  : t.status.updateJue}
               </span>
 
               <Badge

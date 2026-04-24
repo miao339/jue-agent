@@ -559,25 +559,25 @@ class TestRegistration:
 
 
 # ---------------------------------------------------------------------------
-# Toolset: discord_server only in hermes-discord
+# Toolset: discord_server only in jue-discord
 # ---------------------------------------------------------------------------
 
 class TestToolsetInclusion:
-    def test_discord_server_in_hermes_discord_toolset(self):
+    def test_discord_server_in_jue_discord_toolset(self):
         from toolsets import TOOLSETS
-        assert "discord_server" in TOOLSETS["hermes-discord"]["tools"]
+        assert "discord_server" in TOOLSETS["jue-discord"]["tools"]
 
     def test_discord_server_not_in_core_tools(self):
-        from toolsets import _HERMES_CORE_TOOLS
-        assert "discord_server" not in _HERMES_CORE_TOOLS
+        from toolsets import _JUE_CORE_TOOLS
+        assert "discord_server" not in _JUE_CORE_TOOLS
 
     def test_discord_server_not_in_other_toolsets(self):
         from toolsets import TOOLSETS
         for name, ts in TOOLSETS.items():
-            if name == "hermes-discord":
+            if name == "jue-discord":
                 continue
             # The gateway toolset might include it if it unions all platform tools
-            if name == "hermes-gateway":
+            if name == "jue-gateway":
                 continue
             assert "discord_server" not in ts.get("tools", []), (
                 f"discord_server should not be in toolset '{name}'"
@@ -975,7 +975,7 @@ class TestModelToolsIntegration:
         mock_req.return_value = {"flags": 0}
 
         from model_tools import get_tool_definitions
-        tools = get_tool_definitions(enabled_toolsets=["hermes-discord"], quiet_mode=True)
+        tools = get_tool_definitions(enabled_toolsets=["jue-discord"], quiet_mode=True)
         discord_tool = next(
             (t for t in tools if t.get("function", {}).get("name") == "discord_server"),
             None,
@@ -996,6 +996,6 @@ class TestModelToolsIntegration:
         mock_req.return_value = {"flags": 0}
 
         from model_tools import get_tool_definitions
-        tools = get_tool_definitions(enabled_toolsets=["hermes-discord"], quiet_mode=True)
+        tools = get_tool_definitions(enabled_toolsets=["jue-discord"], quiet_mode=True)
         names = [t.get("function", {}).get("name") for t in tools]
         assert "discord_server" not in names

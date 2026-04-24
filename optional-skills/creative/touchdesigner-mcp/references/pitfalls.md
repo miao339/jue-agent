@@ -86,7 +86,7 @@ gl.par.value0.expr = "absTime.seconds"
 
 CRITICAL: set format to `rgba32float` — default 8-bit clamps to 0-1:
 ```python
-t = root.create(constantTOP, 'time_driver')
+t = root.create(constantTOP, 'time_djue')
 t.par.format = 'rgba32float'
 t.par.outputresolution = 'custom'
 t.par.resolutionw = 1; t.par.resolutionh = 1
@@ -425,7 +425,7 @@ TD can show `fps:0` in `td_get_perf` while ops still cook and `TOP.save()` still
 
 **a) Project is paused (playbar stopped).** TD's playbar can be toggled with spacebar. The `root` at `/` has no `.playbar` attribute (it's on the perform COMP). The easiest fix is sending a spacebar keypress via `td_input_execute`, though this tool can sometimes error. As a workaround, `TOP.save()` always works regardless of play state — use it to verify rendering is actually happening before spending time debugging FPS.
 
-**b) Audio device CHOP blocking the main thread.** An `audiooutCHOP` with an active audio device can consume 300-400ms/s (2000%+ of frame budget), stalling the cook loop at FPS=0. Fix: keep the CHOP active but set `volume=0` to prevent the audio driver from blocking. Disabling it entirely (`active=False`) may also work but can prevent downstream audio processing CHOPs from cooking.
+**b) Audio device CHOP blocking the main thread.** An `audiooutCHOP` with an active audio device can consume 300-400ms/s (2000%+ of frame budget), stalling the cook loop at FPS=0. Fix: keep the CHOP active but set `volume=0` to prevent the audio djue from blocking. Disabling it entirely (`active=False`) may also work but can prevent downstream audio processing CHOPs from cooking.
 
 Diagnostic sequence when FPS=0:
 1. `td_get_perf` — check if any op has extreme CPU/s

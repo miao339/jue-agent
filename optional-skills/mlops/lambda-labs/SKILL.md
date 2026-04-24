@@ -6,7 +6,7 @@ author: Orchestra Research
 license: MIT
 dependencies: [lambda-cloud-client>=1.0.0]
 metadata:
-  hermes:
+  jue:
     tags: [Infrastructure, GPU Cloud, Training, Inference, Lambda Labs]
 
 ---
@@ -104,7 +104,7 @@ All instances come with Lambda Stack pre-installed:
 ```bash
 # Included software
 - Ubuntu 22.04 LTS
-- NVIDIA drivers (latest)
+- NVIDIA djues (latest)
 - CUDA 12.x
 - cuDNN 8.x
 - NCCL (for multi-GPU)
@@ -426,7 +426,7 @@ High-performance Slurm clusters with:
 - NCCL, Open MPI
 - PyTorch with DDP and FSDP
 - TensorFlow
-- OFED drivers
+- OFED djues
 
 ### Storage
 
@@ -532,7 +532,7 @@ python inference.py \
 | SSH connection refused | Wait for instance to initialize (3-15 min) |
 | Data lost after terminate | Use persistent filesystems |
 | Slow data transfer | Use filesystem in same region |
-| GPU not detected | Reboot instance, check drivers |
+| GPU not detected | Reboot instance, check djues |
 
 ## References
 

@@ -30,7 +30,7 @@ import re
 import tempfile
 from contextlib import contextmanager
 from pathlib import Path
-from hermes_constants import get_hermes_home
+from jue_constants import get_jue_home
 from typing import Dict, Any, List, Optional
 
 # fcntl is Unix-only; on Windows use msvcrt for file locking
@@ -47,14 +47,32 @@ except ImportError:
 logger = logging.getLogger(__name__)
 
 # Where memory files live — resolved dynamically so profile overrides
-# (HERMES_HOME env var changes) are always respected.  The old module-level
+# (JUE_HOME env var changes) are always respected.  The old module-level
 # constant was cached at import time and could go stale if a profile switch
 # happened after the first import.
 def get_memory_dir() -> Path:
     """Return the profile-scoped memories directory."""
-    return get_hermes_home() / "memories"
+    return get_jue_home() / "memories"
 
 ENTRY_DELIMITER = "\n§\n"
+
+_MEMORY_TEMPLATE_COMMENT = """<!--
+Jue memory boundary:
+- MEMORY.md / USER.md: durable facts, preferences, environment notes
+- session_search: past transcript recall
+- triplet / harness: judgment structures, not facts
+Do not store temporary task progress or reusable procedures here.
+-->
+"""
+
+_USER_TEMPLATE_COMMENT = """<!--
+Jue user profile boundary:
+- USER.md: who the user is and how they prefer to work
+- session_search: what happened in prior conversations
+- triplet / harness: why a judgment made sense
+Keep entries factual and durable.
+-->
+"""
 
 
 # ---------------------------------------------------------------------------
@@ -77,7 +95,7 @@ _MEMORY_THREAT_PATTERNS = [
     # Persistence via shell rc
     (r'authorized_keys', "ssh_backdoor"),
     (r'\$HOME/\.ssh|\~/\.ssh', "ssh_access"),
-    (r'\$HOME/\.hermes/\.env|\~/\.hermes/\.env', "hermes_env"),
+    (r'\$HOME/\.jue/\.env|\~/\.jue/\.env', "jue_env"),
 ]
 
 # Subset of invisible chars for injection detection
@@ -111,6 +129,11 @@ class MemoryStore:
         Never mutated mid-session. Keeps prefix cache stable.
       - memory_entries / user_entries: live state, mutated by tool calls, persisted to disk.
         Tool responses always reflect this live state.
+
+    Jue boundary:
+      - MEMORY.md / USER.md hold durable facts, preferences, and environment notes
+      - session_search recalls transcript history from SQLite
+      - triplets / harnesses hold judgment structures, not factual memory
     """
 
     def __init__(self, memory_char_limit: int = 2200, user_char_limit: int = 1375):
@@ -125,6 +148,7 @@ class MemoryStore:
         """Load entries from MEMORY.md and USER.md, capture system prompt snapshot."""
         mem_dir = get_memory_dir()
         mem_dir.mkdir(parents=True, exist_ok=True)
+        self._ensure_template_files()
 
         self.memory_entries = self._read_file(mem_dir / "MEMORY.md")
         self.user_entries = self._read_file(mem_dir / "USER.md")
@@ -138,6 +162,13 @@ class MemoryStore:
             "memory": self._render_block("memory", self.memory_entries),
             "user": self._render_block("user", self.user_entries),
         }
+
+    def _ensure_template_files(self) -> None:
+        """Create empty memory files with non-injected template guidance."""
+        for target, template in (("memory", _MEMORY_TEMPLATE_COMMENT), ("user", _USER_TEMPLATE_COMMENT)):
+            path = self._path_for(target)
+            if not path.exists():
+                path.write_text(template, encoding="utf-8")
 
     @staticmethod
     @contextmanager
@@ -420,6 +451,7 @@ class MemoryStore:
         except (OSError, IOError):
             return []
 
+        raw = re.sub(r"^\s*<!--.*?-->\s*", "", raw, count=1, flags=re.DOTALL)
         if not raw.strip():
             return []
 
@@ -526,11 +558,16 @@ MEMORY_SCHEMA = {
         "The most valuable memory prevents the user from having to repeat themselves.\n\n"
         "Do NOT save task progress, session outcomes, completed-work logs, or temporary TODO "
         "state to memory; use session_search to recall those from past transcripts.\n"
+        "Do NOT save reusable judgment structures here; those belong in Jue triplets/harnesses.\n"
         "If you've discovered a new way to do something, solved a problem that could be "
         "necessary later, save it as a skill with the skill tool.\n\n"
         "TWO TARGETS:\n"
         "- 'user': who the user is -- name, role, preferences, communication style, pet peeves\n"
         "- 'memory': your notes -- environment facts, project conventions, tool quirks, lessons learned\n\n"
+        "BOUNDARY:\n"
+        "- MEMORY.md / USER.md = durable facts, preferences, environment\n"
+        "- session_search = transcript/history recall\n"
+        "- triplet / harness = judgment process and reusable reasoning structure\n\n"
         "ACTIONS: add (new entry), replace (update existing -- old_text identifies it), "
         "remove (delete -- old_text identifies it).\n\n"
         "SKIP: trivial/obvious info, things easily re-discovered, raw data dumps, and temporary task state."
@@ -578,7 +615,3 @@ registry.register(
     check_fn=check_memory_requirements,
     emoji="🧠",
 )
-
-
-
-

@@ -1,0 +1,4 @@
+[console_scripts]
+jue = hermes_cli.main:main
+jue-acp = acp_adapter.entry:main
+jue-agent = run_agent:main

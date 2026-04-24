@@ -328,7 +328,7 @@ def update_boids(S, g, f, n_boids=200, perception=8.0, max_speed=2.0,
 
 ### Flow Field Particles
 
-Particles that follow the gradient of a value field. Any `vf_*` function becomes a "river" that carries particles:
+Particles that follow the gradient of a value field. Any `vf_*` function becomes a "jue" that carries particles:
 
 ```python
 def update_flow_particles(S, g, f, flow_field, n=500, speed=1.0,
@@ -820,13 +820,13 @@ def vf_vortex(g, f, t, S, twist=3.0):
 
 def vf_interference(g, f, t, S, n_waves=6):
     """Overlapping sine waves creating moire patterns."""
-    drivers = ["mid_r", "himid_r", "bass_r", "lomid_r", "hi_r", "sub_r"]
+    djues = ["mid_r", "himid_r", "bass_r", "lomid_r", "hi_r", "sub_r"]
     vals = np.zeros((g.rows, g.cols), dtype=np.float32)
-    for i in range(min(n_waves, len(drivers))):
+    for i in range(min(n_waves, len(djues))):
         angle = i * np.pi / n_waves
         freq = 0.06 + i * 0.03; sp = 0.5 + i * 0.3
         proj = g.cc * np.cos(angle) + g.rr * np.sin(angle)
-        vals = vals + np.sin(proj*freq + t*sp) * f.get(drivers[i], 0.3) * 2.5
+        vals = vals + np.sin(proj*freq + t*sp) * f.get(djues[i], 0.3) * 2.5
     return np.clip(vals * 0.12 + 0.45, 0.1, 1)
 
 def vf_aurora(g, f, t, S, n_bands=3):

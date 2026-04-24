@@ -20,6 +20,7 @@ from tools.skill_manager_tool import (
     _delete_skill,
     _write_file,
     _remove_file,
+    _generate_harness,
     skill_manage,
     VALID_NAME_RE,
     ALLOWED_SUBDIRS,
@@ -30,7 +31,7 @@ from tools.skill_manager_tool import (
 @contextmanager
 def _skill_dir(tmp_path):
     """Patch both SKILLS_DIR and get_all_skills_dirs so _find_skill searches
-    only the temp directory — not the real ~/.hermes/skills/."""
+    only the temp directory — not the real ~/.jue/skills/."""
     with patch("tools.skill_manager_tool.SKILLS_DIR", tmp_path), \
          patch("agent.skill_utils.get_all_skills_dirs", return_value=[tmp_path]):
         yield
@@ -451,6 +452,42 @@ class TestRemoveFile:
         assert result["success"] is False
         assert "escapes" in result["error"].lower()
         assert outside_file.exists()
+
+
+# ---------------------------------------------------------------------------
+# harness generation
+# ---------------------------------------------------------------------------
+
+
+class TestGenerateHarness:
+    def test_requires_human_name_and_category(self):
+        content = json.dumps({
+            "situation": "用户目标和真实意图可能不一致。",
+            "judgment": "先识别缝隙，再决定是否追问。",
+            "structure": "让目标重新忠实于意图。",
+        })
+
+        result = _generate_harness("", content, category="")
+
+        assert result["success"] is False
+        assert "name" in result["error"]
+        assert "category" in result["error"]
+
+    def test_writes_name_and_category_from_generate_harness_parameters(self, tmp_path):
+        content = json.dumps({
+            "situation": "用户目标和真实意图可能不一致。",
+            "judgment": "先识别缝隙，再决定是否追问。",
+            "structure": "让目标重新忠实于意图。",
+        })
+
+        with patch.dict("os.environ", {"JUE_HOME": str(tmp_path)}):
+            result = _generate_harness("意图-目标缝隙处理", content, category="对话判断")
+
+        assert result["success"] is True
+        harness_dir = tmp_path / "harness3" / "harnesses" / result["harness_id"]
+        md = (harness_dir / "HARNESS.md").read_text(encoding="utf-8")
+        assert "名称：意图-目标缝隙处理" in md
+        assert "分类：对话判断" in md
 
 
 # ---------------------------------------------------------------------------

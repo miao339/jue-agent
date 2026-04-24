@@ -6,12 +6,12 @@ description: "Browser-based dashboard for managing configuration, API keys, sess
 
 # Web Dashboard
 
-The web dashboard is a browser-based UI for managing your Hermes Agent installation. Instead of editing YAML files or running CLI commands, you can configure settings, manage API keys, and monitor sessions from a clean web interface.
+The web dashboard is a browser-based UI for managing your Jue Agent installation. Instead of editing YAML files or running CLI commands, you can configure settings, manage API keys, and monitor sessions from a clean web interface.
 
 ## Quick Start
 
 ```bash
-hermes dashboard
+jue dashboard
 ```
 
 This starts a local web server and opens `http://127.0.0.1:9119` in your browser. The dashboard runs entirely on your machine — no data leaves localhost.
@@ -26,13 +26,13 @@ This starts a local web server and opens `http://127.0.0.1:9119` in your browser
 
 ```bash
 # Custom port
-hermes dashboard --port 8080
+jue dashboard --port 8080
 
 # Bind to all interfaces (use with caution on shared networks)
-hermes dashboard --host 0.0.0.0
+jue dashboard --host 0.0.0.0
 
 # Start without opening browser
-hermes dashboard --no-open
+jue dashboard --no-open
 ```
 
 ## Prerequisites
@@ -40,12 +40,12 @@ hermes dashboard --no-open
 The web dashboard requires FastAPI and Uvicorn. Install them with:
 
 ```bash
-pip install hermes-agent[web]
+pip install jue-agent[web]
 ```
 
-If you installed with `pip install hermes-agent[all]`, the web dependencies are already included.
+If you installed with `pip install jue-agent[all]`, the web dependencies are already included.
 
-When you run `hermes dashboard` without the dependencies, it will tell you what to install. If the frontend hasn't been built yet and `npm` is available, it builds automatically on first launch.
+When you run `jue dashboard` without the dependencies, it will tell you what to install. If the frontend hasn't been built yet and `npm` is available, it builds automatically on first launch.
 
 ## Pages
 
@@ -83,7 +83,7 @@ Fields with known valid values (terminal backend, skin, approval mode, etc.) ren
 - **Import** — uploads a JSON config file to replace the current values
 
 :::tip
-Config changes take effect on the next agent session or gateway restart. The web dashboard edits the same `config.yaml` file that `hermes config set` and the gateway read from.
+Config changes take effect on the next agent session or gateway restart. The web dashboard edits the same `config.yaml` file that `jue config set` and the gateway read from.
 :::
 
 ### API Keys
@@ -145,7 +145,7 @@ Create and manage scheduled cron jobs that run agent prompts on a recurring sche
 
 ### Skills
 
-Browse, search, and toggle skills and toolsets. Skills are loaded from `~/.hermes/skills/` and grouped by category.
+Browse, search, and toggle skills and toolsets. Skills are loaded from `~/.jue/skills/` and grouped by category.
 
 - **Search** — filter skills and toolsets by name, description, or category
 - **Category filter** — click category pills to narrow the list (e.g. MLOps, MCP, Red Teaming, AI)
@@ -165,7 +165,7 @@ You → /reload
   Reloaded .env (3 var(s) updated)
 ```
 
-This re-reads `~/.hermes/.env` into the running process's environment. Useful when you've added a new provider key via the dashboard and want to use it immediately.
+This re-reads `~/.jue/.env` into the running process's environment. Useful when you've added a new provider key via the dashboard and want to use it immediately.
 
 ## REST API
 
@@ -283,7 +283,7 @@ If you're contributing to the web dashboard frontend:
 
 ```bash
 # Terminal 1: start the backend API
-hermes dashboard --no-open
+jue dashboard --no-open
 
 # Terminal 2: start the Vite dev server with HMR
 cd web/
@@ -297,7 +297,7 @@ The frontend is built with React 19, TypeScript, Tailwind CSS v4, and shadcn/ui-
 
 ## Automatic Build on Update
 
-When you run `hermes update`, the web frontend is automatically rebuilt if `npm` is available. This keeps the dashboard in sync with code updates. If `npm` isn't installed, the update skips the frontend build and `hermes dashboard` will build it on first launch.
+When you run `jue update`, the web frontend is automatically rebuilt if `npm` is available. This keeps the dashboard in sync with code updates. If `npm` isn't installed, the update skips the frontend build and `jue dashboard` will build it on first launch.
 
 ## Themes
 
@@ -307,7 +307,7 @@ The dashboard supports visual themes that change colors, overlay effects, and ov
 
 | Theme | Description |
 |-------|-------------|
-| **Hermes Teal** | Classic dark teal (default) |
+| **Jue Teal** | Classic dark teal (default) |
 | **Midnight** | Deep blue-violet with cool accents |
 | **Ember** | Warm crimson and bronze |
 | **Mono** | Clean grayscale, minimal |
@@ -318,10 +318,10 @@ Theme selection is persisted to `config.yaml` under `dashboard.theme` and restor
 
 ### Custom Themes
 
-Create a YAML file in `~/.hermes/dashboard-themes/`:
+Create a YAML file in `~/.jue/dashboard-themes/`:
 
 ```yaml
-# ~/.hermes/dashboard-themes/ocean.yaml
+# ~/.jue/dashboard-themes/ocean.yaml
 name: ocean
 label: Ocean
 description: Deep sea blues with coral accents

@@ -81,7 +81,7 @@ class TestChatCompletionsBuildKwargs:
     def test_nous_tags(self, transport):
         msgs = [{"role": "user", "content": "Hi"}]
         kw = transport.build_kwargs(model="gpt-4o", messages=msgs, is_nous=True)
-        assert kw["extra_body"]["tags"] == ["product=hermes-agent"]
+        assert kw["extra_body"]["tags"] == ["product=jue-agent"]
 
     def test_reasoning_default(self, transport):
         msgs = [{"role": "user", "content": "Hi"}]
@@ -118,6 +118,28 @@ class TestChatCompletionsBuildKwargs:
             reasoning_config={"effort": "none"},
         )
         assert kw["extra_body"]["think"] is False
+        assert kw["extra_body"]["enable_thinking"] is False
+
+    def test_custom_enable_thinking_true(self, transport):
+        """iFlytek (讯飞) uses enable_thinking: true when reasoning is enabled."""
+        msgs = [{"role": "user", "content": "Hi"}]
+        kw = transport.build_kwargs(
+            model="astron-code-latest", messages=msgs,
+            is_custom_provider=True,
+            reasoning_config={"enabled": True, "effort": "medium"},
+        )
+        assert kw["extra_body"]["enable_thinking"] is True
+
+    def test_custom_enable_thinking_disabled(self, transport):
+        """When reasoning is explicitly disabled, enable_thinking should be False."""
+        msgs = [{"role": "user", "content": "Hi"}]
+        kw = transport.build_kwargs(
+            model="astron-code-latest", messages=msgs,
+            is_custom_provider=True,
+            reasoning_config={"enabled": False},
+        )
+        assert kw["extra_body"]["think"] is False
+        assert kw["extra_body"]["enable_thinking"] is False
 
     def test_max_tokens_with_fn(self, transport):
         msgs = [{"role": "user", "content": "Hi"}]

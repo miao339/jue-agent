@@ -9,6 +9,16 @@ import model_tools
 import tools.mcp_tool
 
 
+def test_default_cli_banner_logo_is_jue_agent_not_hermes_agent():
+    assert "JUE-AGENT" in banner.JUE_AGENT_LOGO
+    assert "HERMES" not in banner.JUE_AGENT_LOGO
+
+
+def test_default_cli_banner_has_no_legacy_caduceus_or_symbol():
+    assert banner.JUE_CADUCEUS == ""
+    assert "⚕" not in banner.JUE_AGENT_LOGO
+
+
 def test_display_toolset_name_strips_legacy_suffix():
     assert banner._display_toolset_name("homeassistant_tools") == "homeassistant"
     assert banner._display_toolset_name("honcho_tools") == "honcho"

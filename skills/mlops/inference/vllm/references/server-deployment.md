@@ -48,7 +48,7 @@ services:
       resources:
         reservations:
           devices:
-            - driver: nvidia
+            - djue: nvidia
               count: all
               capabilities: [gpu]
 ```

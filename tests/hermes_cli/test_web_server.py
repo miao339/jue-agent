@@ -50,7 +50,7 @@ class TestReloadEnv:
         os.environ.pop("TEST_RELOAD_VAR", None)
 
     def test_removes_deleted_known_vars(self, tmp_path):
-        """reload_env() removes known Hermes vars not present in .env."""
+        """reload_env() removes known Jue vars not present in .env."""
         env_file = tmp_path / ".env"
         env_file.write_text("")  # empty .env
         # Pick a known key from OPTIONAL_ENV_VARS
@@ -62,7 +62,7 @@ class TestReloadEnv:
             assert count >= 1
 
     def test_does_not_remove_unknown_vars(self, tmp_path):
-        """reload_env() preserves non-Hermes env vars even when absent from .env."""
+        """reload_env() preserves non-Jue env vars even when absent from .env."""
         env_file = tmp_path / ".env"
         env_file.write_text("")
         with patch("hermes_cli.config.get_env_path", return_value=env_file):
@@ -101,18 +101,18 @@ class TestWebServerEndpoints:
     """Test the FastAPI REST endpoints using Starlette TestClient."""
 
     @pytest.fixture(autouse=True)
-    def _setup_test_client(self, monkeypatch, _isolate_hermes_home):
-        """Create a TestClient and isolate the state DB under the test HERMES_HOME."""
+    def _setup_test_client(self, monkeypatch, _isolate_jue_home):
+        """Create a TestClient and isolate the state DB under the test JUE_HOME."""
         try:
             from starlette.testclient import TestClient
         except ImportError:
             pytest.skip("fastapi/starlette not installed")
 
-        import hermes_state
-        from hermes_constants import get_hermes_home
+        import jue_state
+        from jue_constants import get_jue_home
         from hermes_cli.web_server import app, _SESSION_TOKEN
 
-        monkeypatch.setattr(hermes_state, "DEFAULT_DB_PATH", get_hermes_home() / "state.db")
+        monkeypatch.setattr(jue_state, "DEFAULT_DB_PATH", get_jue_home() / "state.db")
 
         self.client = TestClient(app)
         self.client.headers["Authorization"] = f"Bearer {_SESSION_TOKEN}"
@@ -122,7 +122,7 @@ class TestWebServerEndpoints:
         assert resp.status_code == 200
         data = resp.json()
         assert "version" in data
-        assert "hermes_home" in data
+        assert "jue_home" in data
         assert "active_sessions" in data
 
     def test_get_status_filters_unconfigured_gateway_platforms(self, monkeypatch):
@@ -516,17 +516,17 @@ class TestNewEndpoints:
     """Tests for session detail, logs, cron, skills, tools, raw config, analytics."""
 
     @pytest.fixture(autouse=True)
-    def _setup(self, monkeypatch, _isolate_hermes_home):
+    def _setup(self, monkeypatch, _isolate_jue_home):
         try:
             from starlette.testclient import TestClient
         except ImportError:
             pytest.skip("fastapi/starlette not installed")
 
-        import hermes_state
-        from hermes_constants import get_hermes_home
+        import jue_state
+        from jue_constants import get_jue_home
         from hermes_cli.web_server import app, _SESSION_TOKEN
 
-        monkeypatch.setattr(hermes_state, "DEFAULT_DB_PATH", get_hermes_home() / "state.db")
+        monkeypatch.setattr(jue_state, "DEFAULT_DB_PATH", get_jue_home() / "state.db")
 
         self.client = TestClient(app)
         self.client.headers["Authorization"] = f"Bearer {_SESSION_TOKEN}"
@@ -717,7 +717,7 @@ class TestNewEndpoints:
         }
 
     def test_analytics_usage_includes_skill_breakdown(self):
-        from hermes_state import SessionDB
+        from jue_state import SessionDB
 
         db = SessionDB()
         try:

@@ -43,9 +43,9 @@ import fire
 from datetime import datetime
 from pathlib import Path
 
-from hermes_constants import get_hermes_home
+from jue_constants import get_jue_home
 
-# Load .env from ~/.hermes/.env first, then project root as dev fallback.
+# Load .env from ~/.jue/.env first, then project root as dev fallback.
 # User-managed env files should override stale shell exports on restart.
 from hermes_cli.env_loader import load_hermes_dotenv
 from hermes_cli.timeouts import (
@@ -53,9 +53,9 @@ from hermes_cli.timeouts import (
     get_provider_stale_timeout,
 )
 
-_hermes_home = get_hermes_home()
+_jue_home = get_jue_home()
 _project_env = Path(__file__).parent / '.env'
-_loaded_env_paths = load_hermes_dotenv(hermes_home=_hermes_home, project_env=_project_env)
+_loaded_env_paths = load_hermes_dotenv(jue_home=_jue_home, project_env=_project_env)
 if _loaded_env_paths:
     for _env_path in _loaded_env_paths:
         logger.info("Loaded environment variables from %s", _env_path)
@@ -76,7 +76,7 @@ from tools.interrupt import set_interrupt as _set_interrupt
 from tools.browser_tool import cleanup_browser
 
 
-from hermes_constants import OPENROUTER_BASE_URL
+from jue_constants import OPENROUTER_BASE_URL
 
 # Agent internals extracted to agent/ package for modularity
 from agent.memory_manager import build_memory_context_block, sanitize_context
@@ -98,7 +98,7 @@ from agent.model_metadata import (
 from agent.context_compressor import ContextCompressor
 from agent.subdirectory_hints import SubdirectoryHintTracker
 from agent.prompt_caching import apply_anthropic_cache_control
-from agent.prompt_builder import build_skills_system_prompt, build_context_files_prompt, build_environment_hints, load_soul_md, TOOL_USE_ENFORCEMENT_GUIDANCE, TOOL_USE_ENFORCEMENT_MODELS, DEVELOPER_ROLE_MODELS, GOOGLE_MODEL_OPERATIONAL_GUIDANCE, OPENAI_MODEL_EXECUTION_GUIDANCE
+from agent.prompt_builder import build_skills_system_prompt, build_context_files_prompt, build_environment_hints, load_soul_md, load_root_paradigm, TOOL_USE_ENFORCEMENT_GUIDANCE, TOOL_USE_ENFORCEMENT_MODELS, DEVELOPER_ROLE_MODELS, GOOGLE_MODEL_OPERATIONAL_GUIDANCE, OPENAI_MODEL_EXECUTION_GUIDANCE
 from agent.usage_pricing import estimate_usage_cost, normalize_usage
 from agent.codex_responses_adapter import (
     _chat_content_to_responses_parts,
@@ -127,11 +127,98 @@ from agent.trajectory import (
 from utils import atomic_json_write, base_url_host_matches, base_url_hostname, env_var_enabled, normalize_proxy_url
 
 
+_JUE_HARNESS1_READY = False
+_JUE_HARNESS3_READY = False
+
+
+def _ensure_jue_harness1_installed() -> None:
+    """Best-effort registration of Jue Harness①.
+
+    Jue's first harness is a hard safety floor. It should be wired in code,
+    not merely described in prompts. Registration is idempotent and failures
+    must never break Jue startup.
+    """
+    global _JUE_HARNESS1_READY
+    if _JUE_HARNESS1_READY:
+        return
+    try:
+        from jue.harness1.guard import register_hooks as _register_jue_harness1_hooks
+
+        _register_jue_harness1_hooks()
+        _JUE_HARNESS1_READY = True
+        logger.info("Jue Harness① registered")
+    except Exception as e:
+        logger.warning("Could not register Jue Harness①: %s", e)
+
+
+def _ensure_jue_harness3_installed() -> None:
+    """Best-effort registration of Jue Harness③ lifecycle hooks."""
+    global _JUE_HARNESS3_READY
+    if _JUE_HARNESS3_READY:
+        return
+    try:
+        from jue.harness3.runtime import register_hooks as _register_jue_harness3_hooks
+
+        _register_jue_harness3_hooks()
+        _JUE_HARNESS3_READY = True
+        logger.info("Jue Harness③ hooks registered")
+    except Exception as e:
+        logger.warning("Could not register Jue Harness③ hooks: %s", e)
+
+
+def _should_trigger_jue_judgment_review(
+    user_message: str,
+    messages: List[Dict[str, Any]],
+    final_response: str,
+) -> bool:
+    """Heuristic for when Jue should review a turn for judgment accumulation.
+
+    This is intentionally not based on tool-count thresholds. We only trigger
+    a post-turn review when the task shape suggests a likely request/intent
+    gap, especially around destructive or cleanup-style actions.
+    """
+    if not isinstance(user_message, str) or not user_message.strip():
+        return False
+
+    text = user_message.lower()
+    delete_signals = (
+        "删", "删除", "清理", "清掉", "移除", "清空", "日志",
+        "delete", "remove", "cleanup", "clean up", "purge", "wipe", "reset",
+    )
+    if not any(signal in user_message or signal in text for signal in delete_signals):
+        return False
+
+    touched_context = False
+    used_destructive_tools = False
+    for msg in messages:
+        if not isinstance(msg, dict) or msg.get("role") != "assistant":
+            continue
+        for tool_call in msg.get("tool_calls") or []:
+            if not isinstance(tool_call, dict):
+                continue
+            fn = ((tool_call.get("function") or {}).get("name") or "").strip()
+            args_text = json.dumps((tool_call.get("function") or {}).get("arguments", ""), ensure_ascii=False)
+            if fn in {"read_file", "search_files"}:
+                touched_context = True
+            if fn == "terminal":
+                if re.search(r"\b(rm|del|unlink|rmdir|mv)\b", args_text, re.IGNORECASE):
+                    used_destructive_tools = True
+
+    response_text = (final_response or "").lower()
+    intent_gap_signals = (
+        "意图", "保留", "仍在使用", "还在用", "没有删除", "只删除",
+        "intent", "keep", "preserve", "still needed", "left in place",
+    )
+    noticed_gap = any(signal in final_response or signal in response_text for signal in intent_gap_signals)
+
+    return (touched_context and used_destructive_tools) or noticed_gap
+
+
 
 class _SafeWriter:
     """Transparent stdio wrapper that catches OSError/ValueError from broken pipes.
 
-    When hermes-agent runs as a systemd service, Docker container, or headless
+    When jue-agent runs as a systemd service, Docker container, or headless
     daemon, the stdout/stderr pipe can become unavailable (idle timeout, buffer
     exhaustion, socket reset). Any print() call then raises
     ``OSError: [Errno 5] Input/output error``, which can crash agent setup or
@@ -1021,10 +1108,10 @@ class AIAgent:
         self._rate_limit_state: Optional["RateLimitState"] = None
 
         # Centralized logging — agent.log (INFO+) and errors.log (WARNING+)
-        # both live under ~/.hermes/logs/.  Idempotent, so gateway mode
+        # both live under ~/.jue/logs/.  Idempotent, so gateway mode
         # (which creates a new AIAgent per message) won't duplicate handlers.
-        from hermes_logging import setup_logging, setup_verbose_logging
-        setup_logging(hermes_home=_hermes_home)
+        from jue_logging import setup_logging, setup_verbose_logging
+        setup_logging(jue_home=_jue_home)
 
         if self.verbose_logging:
             setup_verbose_logging()
@@ -1165,8 +1252,8 @@ class AIAgent:
                 effective_base = base_url
                 if base_url_host_matches(effective_base, "openrouter.ai"):
                     client_kwargs["default_headers"] = {
-                        "HTTP-Referer": "https://hermes-agent.nousresearch.com",
-                        "X-OpenRouter-Title": "Hermes Agent",
+                        "HTTP-Referer": "https://jue-agent.nousresearch.com",
+                        "X-OpenRouter-Title": "Jue Agent",
                         "X-OpenRouter-Categories": "productivity,cli-agent",
                     }
                 elif base_url_host_matches(effective_base, "api.githubcopilot.com"):
@@ -1217,12 +1304,12 @@ class AIAgent:
                         raise RuntimeError(
                             f"Provider '{_explicit}' is set in config.yaml but no API key "
                             f"was found. Set the {_env_hint} environment "
-                            f"variable, or switch to a different provider with `hermes model`."
+                            f"variable, or switch to a different provider with `jue model`."
                         )
                     # No provider configured — reject with a clear message.
                     raise RuntimeError(
-                        "No LLM provider configured. Run `hermes model` to "
-                        "select a provider, or run `hermes setup` for first-time "
+                        "No LLM provider configured. Run `jue model` to "
+                        "select a provider, or run `jue setup` for first-time "
                         "configuration."
                     )
             
@@ -1348,9 +1435,9 @@ class AIAgent:
             short_uuid = uuid.uuid4().hex[:6]
             self.session_id = f"{timestamp_str}_{short_uuid}"
         
-        # Session logs go into ~/.hermes/sessions/ alongside gateway sessions
-        hermes_home = get_hermes_home()
-        self.logs_dir = hermes_home / "sessions"
+        # Session logs go into ~/.jue/sessions/ alongside gateway sessions
+        jue_home = get_jue_home()
+        self.logs_dir = jue_home / "sessions"
         self.logs_dir.mkdir(parents=True, exist_ok=True)
         self.session_log_file = self.logs_dir / f"session_{self.session_id}.json"
         
@@ -1359,6 +1446,10 @@ class AIAgent:
         
         # Cached system prompt -- built once per session, only rebuilt on compression
         self._cached_system_prompt: Optional[str] = None
+
+        # Jue Harness① is code-enforced and must be registered at startup.
+        _ensure_jue_harness1_installed()
+        _ensure_jue_harness3_installed()
         
         # Filesystem checkpoint manager (transparent — not a tool)
         from tools.checkpoint_manager import CheckpointManager
@@ -1375,7 +1466,7 @@ class AIAgent:
             try:
                 self._session_db.create_session(
                     session_id=self.session_id,
-                    source=self.platform or os.environ.get("HERMES_SESSION_SOURCE", "cli"),
+                    source=self.platform or os.environ.get("JUE_SESSION_SOURCE", "cli"),
                     model=self.model,
                     model_config={
                         "max_iterations": self.max_iterations,
@@ -1456,7 +1547,7 @@ class AIAgent:
                         _init_kwargs = {
                             "session_id": self.session_id,
                             "platform": platform or "cli",
-                            "hermes_home": str(get_hermes_home()),
+                            "jue_home": str(get_jue_home()),
                             "agent_context": "primary",
                         }
                         # Thread session title for memory provider scoping
@@ -1479,7 +1570,7 @@ class AIAgent:
                             from hermes_cli.profiles import get_active_profile_name
                             _profile = get_active_profile_name()
                             _init_kwargs["agent_identity"] = _profile
-                            _init_kwargs["agent_workspace"] = "hermes"
+                            _init_kwargs["agent_workspace"] = "jue"
                         except Exception:
                             pass
                         self._memory_manager.initialize_all(**_init_kwargs)
@@ -1513,7 +1604,11 @@ class AIAgent:
                     self.valid_tool_names.add(_tname)
                     _existing_tool_names.add(_tname)
 
-        # Skills config: nudge interval for skill creation reminders
+        # Jue originally inherited a skill-creation nudge by tool-call count.
+        # Jue does not treat accumulation as a mechanical threshold;
+        # the model should decide in context whether to store a skill or
+        # a judgment triplet. Keep the config parsed for compatibility,
+        # but disable automatic skill-review triggering.
         self._skill_nudge_interval = 10
         try:
             skills_config = _agent_cfg.get("skills", {})
@@ -1705,7 +1800,7 @@ class AIAgent:
             raise ValueError(
                 f"Model {self.model} has a context window of {_ctx:,} tokens, "
                 f"which is below the minimum {MINIMUM_CONTEXT_LENGTH:,} required "
-                f"by Hermes Agent.  Choose a model with at least "
+                f"by Jue Agent.  Choose a model with at least "
                 f"{MINIMUM_CONTEXT_LENGTH // 1000}K context, or set "
                 f"model.context_length in config.yaml to override."
             )
@@ -1726,7 +1821,7 @@ class AIAgent:
             try:
                 self.context_compressor.on_session_start(
                     self.session_id,
-                    hermes_home=str(get_hermes_home()),
+                    jue_home=str(get_jue_home()),
                     platform=self.platform or "cli",
                     model=self.model,
                     context_length=getattr(self.context_compressor, "context_length", 0),
@@ -2059,7 +2154,7 @@ class AIAgent:
         all non-forced output is suppressed.
 
         ``suppress_status_output`` is a stricter CLI automation mode used by
-        parseable single-query flows such as ``hermes chat -q``. In that mode,
+        parseable single-query flows such as ``jue chat -q``. In that mode,
         all status/diagnostic prints routed through ``_vprint`` are suppressed
         so stdout stays machine-readable.
         """
@@ -2165,7 +2260,7 @@ class AIAgent:
                 msg = (
                     "⚠ No auxiliary LLM provider configured — context "
                     "compression will drop middle turns without a summary. "
-                    "Run `hermes setup` or set OPENROUTER_API_KEY."
+                    "Run `jue setup` or set OPENROUTER_API_KEY."
                 )
                 self._compression_warning = msg
                 self._emit_status(msg)
@@ -2195,7 +2290,7 @@ class AIAgent:
                 raise ValueError(
                     f"Auxiliary compression model {aux_model} has a context "
                     f"window of {aux_context:,} tokens, which is below the "
-                    f"minimum {MINIMUM_CONTEXT_LENGTH:,} required by Hermes "
+                    f"minimum {MINIMUM_CONTEXT_LENGTH:,} required by Jue "
                     f"Agent.  Choose a compression model with at least "
                     f"{MINIMUM_CONTEXT_LENGTH // 1000}K context (set "
                     f"auxiliary.compression.model in config.yaml), or set "
@@ -2290,19 +2385,19 @@ class AIAgent:
         Priority:
           1. ``providers.<id>.models.<model>.timeout_seconds`` (per-model override)
           2. ``providers.<id>.request_timeout_seconds`` (provider-wide)
-          3. ``HERMES_API_TIMEOUT`` env var (legacy escape hatch)
+          3. ``JUE_API_TIMEOUT`` env var (legacy escape hatch)
           4. 1800.0s default
 
         Used by OpenAI-wire chat completions (streaming and non-streaming) so
         the per-provider config knob wins over the 1800s default.  Without this
-        helper, the hardcoded ``HERMES_API_TIMEOUT`` fallback would always be
+        helper, the hardcoded ``JUE_API_TIMEOUT`` fallback would always be
         passed as a per-call ``timeout=`` kwarg, overriding the client-level
         timeout the AIAgent.__init__ path configured.
         """
         cfg = get_provider_request_timeout(self.provider, self.model)
         if cfg is not None:
             return cfg
-        return float(os.getenv("HERMES_API_TIMEOUT", 1800.0))
+        return float(os.getenv("JUE_API_TIMEOUT", 1800.0))
 
     def _resolved_api_call_stale_timeout_base(self) -> tuple[float, bool]:
         """Resolve the base non-stream stale timeout and whether it is implicit.
@@ -2310,7 +2405,7 @@ class AIAgent:
         Priority:
           1. ``providers.<id>.models.<model>.stale_timeout_seconds``
           2. ``providers.<id>.stale_timeout_seconds``
-          3. ``HERMES_API_CALL_STALE_TIMEOUT`` env var
+          3. ``JUE_API_CALL_STALE_TIMEOUT`` env var
           4. 300.0s default
 
         Returns ``(timeout_seconds, uses_implicit_default)`` so the caller can
@@ -2322,7 +2417,7 @@ class AIAgent:
         if cfg is not None:
             return cfg, False
 
-        env_timeout = os.getenv("HERMES_API_CALL_STALE_TIMEOUT")
+        env_timeout = os.getenv("JUE_API_CALL_STALE_TIMEOUT")
         if env_timeout is not None:
             return float(env_timeout), False
 
@@ -2755,42 +2850,45 @@ class AIAgent:
                 logging.warning(f"Failed to cleanup browser for task {task_id}: {e}")
 
     # ------------------------------------------------------------------
-    # Background memory/skill review
+    # Background memory/accumulation review
     # ------------------------------------------------------------------
 
     _MEMORY_REVIEW_PROMPT = (
-        "Review the conversation above and consider saving to memory if appropriate.\n\n"
-        "Focus on:\n"
-        "1. Has the user revealed things about themselves — their persona, desires, "
-        "preferences, or personal details worth remembering?\n"
-        "2. Has the user expressed expectations about how you should behave, their work "
-        "style, or ways they want you to operate?\n\n"
-        "If something stands out, save it using the memory tool. "
-        "If nothing is worth saving, just say 'Nothing to save.' and stop."
+        "回顾以上对话，考虑是否需要保存到记忆。\n\n"
+        "关注：\n"
+        "1. 用户是否透露了关于自己的信息——身份、愿望、偏好、值得记住的个人细节？\n"
+        "2. 用户是否表达了对你行为方式的期望、工作风格、或操作偏好？\n\n"
+        "如果有值得保存的，用memory工具保存。"
+        "如果没有，说'Nothing to save.'然后停止。"
     )
 
     _SKILL_REVIEW_PROMPT = (
-        "Review the conversation above and consider saving or updating a skill if appropriate.\n\n"
-        "Focus on: was a non-trivial approach used to complete a task that required trial "
-        "and error, or changing course due to experiential findings along the way, or did "
-        "the user expect or desire a different method or outcome?\n\n"
-        "If a relevant skill already exists, update it with what you learned. "
-        "Otherwise, create a new skill if the approach is reusable.\n"
-        "If nothing is worth saving, just say 'Nothing to save.' and stop."
+        "回顾以上对话，考虑是否需要积累。\n\n"
+        "每次都评估两条积累轨道：\n"
+        "1. Skills — 可复用的过程或能力结构（怎么做）。\n"
+        "2. 判断三元组 — 情境 + 判断过程 + 生成的结构（为什么这个方向说得通）。\n\n"
+        "如果用户的目标（他说的）没有正确呈现他的意图（他需要的），"
+        "而你调整了或应该调整以让目标忠实于它的根本意图，优先记录三元组。\n"
+        "如果同时出现了可复用的过程，保存/更新skill，并单独判断判断本身是否也值得记为三元组。两条轨道不互斥。\n"
+        "当'为什么'比'具体步骤'更重要时，优先三元组。"
+        "当过程本身是以后能帮上忙的，优先skill。"
+        "如果相关skill已存在，更新它。如果三元组值得保留，"
+        "用skill_manage(action='record_triplet')记录。\n"
+        "如果没有值得保存的，说'Nothing to save.'然后停止。"
     )
 
     _COMBINED_REVIEW_PROMPT = (
-        "Review the conversation above and consider two things:\n\n"
-        "**Memory**: Has the user revealed things about themselves — their persona, "
-        "desires, preferences, or personal details? Has the user expressed expectations "
-        "about how you should behave, their work style, or ways they want you to operate? "
-        "If so, save using the memory tool.\n\n"
-        "**Skills**: Was a non-trivial approach used to complete a task that required trial "
-        "and error, or changing course due to experiential findings along the way, or did "
-        "the user expect or desire a different method or outcome? If a relevant skill "
-        "already exists, update it. Otherwise, create a new one if the approach is reusable.\n\n"
-        "Only act if there's something genuinely worth saving. "
-        "If nothing stands out, just say 'Nothing to save.' and stop."
+        "回顾以上对话，考虑两件事：\n\n"
+        "**记忆**：用户是否透露了关于自己的信息——身份、愿望、偏好、个人细节？"
+        "用户是否表达了对行为方式的期望、工作风格、操作偏好？"
+        "如果有，用memory工具保存。\n\n"
+        "**积累**：显式检查两条轨道。\n"
+        "- Skills：当可复用过程是主要价值时，保存/更新skill。\n"
+        "- 三元组：当判断本身是主要价值时——情境、为什么这么判断、指向什么方向——记录三元组。\n"
+        "如果两者都有价值，都保存。适当时更新已有skill，用"
+        "skill_manage(action='record_triplet')记录三元组。\n\n"
+        "只有真正值得保存的才行动。"
+        "如果没有值得保存的，说'Nothing to save.'然后停止。"
     )
 
     def _spawn_background_review(
@@ -2799,7 +2897,7 @@ class AIAgent:
         review_memory: bool = False,
         review_skills: bool = False,
     ) -> None:
-        """Spawn a background thread to review the conversation for memory/skill saves.
+        """Spawn a background thread to review the conversation for memory/accumulation saves.
 
         Creates a full AIAgent fork with the same model, tools, and context as the
         main session. The review prompt is appended as the next user turn in the
@@ -2829,12 +2927,16 @@ class AIAgent:
                         quiet_mode=True,
                         platform=self.platform,
                         provider=self.provider,
+                        base_url=self.base_url,
+                        api_key=self.api_key,
                     )
                     review_agent._memory_store = self._memory_store
                     review_agent._memory_enabled = self._memory_enabled
                     review_agent._user_profile_enabled = self._user_profile_enabled
                     review_agent._memory_nudge_interval = 0
                     review_agent._skill_nudge_interval = 0
+                    review_agent._active_harness_id = getattr(self, "_active_harness_id", "") or ""
+                    review_agent._last_user_message = getattr(self, "_last_user_message", "") or ""
 
                     review_agent.run_conversation(
                         user_message=prompt,
@@ -3435,7 +3537,7 @@ class AIAgent:
 
             self._vprint(f"{self.log_prefix}🧾 Request debug dump written to: {dump_file}")
 
-            if env_var_enabled("HERMES_DUMP_REQUEST_STDOUT"):
+            if env_var_enabled("JUE_DUMP_REQUEST_STDOUT"):
                 print(json.dumps(dump_payload, ensure_ascii=False, indent=2, default=str))
 
             return dump_file
@@ -3979,25 +4081,67 @@ class AIAgent:
         is stable across all turns in a session, maximizing prefix cache hits.
         """
         # Layers (in order):
+        #   0. ROOT_PARADIGM — Jue's judgment paradigm (always present)
+        #   0b. Harness paradigm_supplement — harness收窄的ROOT_PARADIGM片段（追加在主之后）
         #   1. Agent identity — SOUL.md when available, else DEFAULT_AGENT_IDENTITY
+        #       (harness的soul_override会替换主SOUL)
         #   2. User / gateway system prompt (if provided)
         #   3. Persistent memory (frozen snapshot)
         #   4. Skills guidance (if skills tools are loaded)
         #   5. Context files (AGENTS.md, .cursorrules — SOUL.md excluded here when used as identity)
-        #   6. Current date & time (frozen at build time)
-        #   7. Platform-specific formatting hint
+        #   6. Harness③ injection — harness_context在前，triplet orientation在后
+        #      顺序决策：harness是当前激活的判断结构（更具体），triplet是过往判断痕迹（更泛化）。
+        #      具体在前，泛化在后。两者并列，不需要冲突处理——都是方向不是规则。
+        #   7. Current date & time (frozen at build time)
+        #   8. Platform-specific formatting hint
 
-        # Try SOUL.md as primary identity (unless context files are skipped)
+        # Jue: ROOT_PARADIGM is always injected first, before SOUL.md.
+        # It is locked and cannot be overridden.
+        prompt_parts = []
+        _paradigm_content = load_root_paradigm()
+        if _paradigm_content:
+            prompt_parts.append(_paradigm_content)
+
+        # Jue: Harness③ — check for active harness injection.
+        # paradigm_supplement goes right after ROOT_PARADIGM, before SOUL.
+        # soul_override replaces the main SOUL.md if present.
+        # harness_context goes after skills guidance, before triplet orientation.
+        _active_harness_injection = {}
+        try:
+            from jue.harness3.orientation import build_harness_injection
+            from jue.harness3.store import HarnessStore
+            _harness_store = HarnessStore()
+            _active_harness_id = getattr(self, '_active_harness_id', '') or ''
+            if _active_harness_id:
+                _harness_record = _harness_store.get(_active_harness_id)
+                if _harness_record:
+                    _active_harness_injection = build_harness_injection(_harness_record)
+        except Exception as e:
+            logger.debug("Could not load harness injection: %s", e)
+
+        # Harness paradigm_supplement — after ROOT_PARADIGM, before SOUL
+        if "paradigm_supplement" in _active_harness_injection:
+            prompt_parts.append(_active_harness_injection["paradigm_supplement"])
+
+        # Try SOUL.md as primary identity.
+        # SOUL is part of Jue/Jue identity assembly, not a project context file,
+        # so it must stay consistent across CLI / gateway / ACP / delegation even
+        # when context-file discovery is skipped.
+        # Jue: harness的soul_override替换主SOUL
         _soul_loaded = False
-        if not self.skip_context_files:
+        if "soul_override" in _active_harness_injection:
+            # Harness has its own SOUL — use it instead of main SOUL.md
+            prompt_parts.append(_active_harness_injection["soul_override"])
+            _soul_loaded = True
+        else:
             _soul_content = load_soul_md()
             if _soul_content:
-                prompt_parts = [_soul_content]
+                prompt_parts.append(_soul_content)
                 _soul_loaded = True
 
-        if not _soul_loaded:
-            # Fallback to hardcoded identity
-            prompt_parts = [DEFAULT_AGENT_IDENTITY]
+        if not _soul_loaded and not _paradigm_content:
+            # Fallback to hardcoded identity only if both paradigm and soul are missing
+            prompt_parts.append(DEFAULT_AGENT_IDENTITY)
 
         # Tool-aware behavioral guidance: only inject when the tools are loaded
         tool_guidance = []
@@ -4009,6 +4153,23 @@ class AIAgent:
             tool_guidance.append(SKILLS_GUIDANCE)
         if tool_guidance:
             prompt_parts.append(" ".join(tool_guidance))
+
+        # Jue: Inject Harness③ — harness_context在前，triplet orientation在后。
+        # 顺序决策：harness是当前激活的判断结构（更具体），triplet是过往判断痕迹（更泛化）。
+        # 具体在前，泛化在后。两者并列，不需要冲突处理——都是方向不是规则。
+        if "harness_context" in _active_harness_injection:
+            prompt_parts.append(_active_harness_injection["harness_context"])
+
+        try:
+            from jue.harness3.orientation import build_orientation, format_orientation_for_prompt
+            _orientation = build_orientation(
+                task_description=getattr(self, '_last_user_message', '') or '',
+            )
+            _orientation_text = format_orientation_for_prompt(_orientation)
+            if _orientation_text:
+                prompt_parts.append(_orientation_text)
+        except Exception as e:
+            logger.debug("Could not inject Harness③ orientation: %s", e)
 
         nous_subscription_prompt = build_nous_subscription_prompt(self.valid_tool_names)
         if nous_subscription_prompt:
@@ -4093,7 +4254,7 @@ class AIAgent:
 
         if not self.skip_context_files:
             # Use TERMINAL_CWD for context file discovery when set (gateway
-            # mode).  The gateway process runs from the hermes-agent install
+            # mode).  The gateway process runs from the jue-agent install
             # dir, so os.getcwd() would pick up the repo's AGENTS.md and
             # other dev files — inflating token usage by ~10k for no benefit.
             _context_cwd = os.getenv("TERMINAL_CWD") or None
@@ -4102,8 +4263,8 @@ class AIAgent:
             if context_files_prompt:
                 prompt_parts.append(context_files_prompt)
 
-        from hermes_time import now as _hermes_now
-        now = _hermes_now()
+        from jue_time import now as _jue_now
+        now = _jue_now()
         timestamp_line = f"Conversation started: {now.strftime('%A, %B %d, %Y %I:%M %p')}"
         if self.pass_session_id and self.session_id:
             timestamp_line += f"\nSession ID: {self.session_id}"
@@ -4305,6 +4466,7 @@ class AIAgent:
         so the rebuilt prompt captures any writes from this session.
         """
         self._cached_system_prompt = None
+        self._cached_system_prompt_seed = None
         if self._memory_store:
             self._memory_store.load_from_disk()
 
@@ -4933,8 +5095,8 @@ class AIAgent:
             from hermes_cli.auth import resolve_nous_runtime_credentials
 
             creds = resolve_nous_runtime_credentials(
-                min_key_ttl_seconds=max(60, int(os.getenv("HERMES_NOUS_MIN_KEY_TTL_SECONDS", "1800"))),
-                timeout_seconds=float(os.getenv("HERMES_NOUS_TIMEOUT_SECONDS", "15")),
+                min_key_ttl_seconds=max(60, int(os.getenv("JUE_NOUS_MIN_KEY_TTL_SECONDS", "1800"))),
+                timeout_seconds=float(os.getenv("JUE_NOUS_TIMEOUT_SECONDS", "15")),
                 force_mint=force,
             )
         except Exception as exc:
@@ -5499,23 +5661,23 @@ class AIAgent:
             """Stream a chat completions response."""
             import httpx as _httpx
             # Per-provider / per-model request_timeout_seconds (from config.yaml)
-            # wins over the HERMES_API_TIMEOUT env default if the user set it.
+            # wins over the JUE_API_TIMEOUT env default if the user set it.
             _provider_timeout_cfg = get_provider_request_timeout(self.provider, self.model)
             _base_timeout = (
                 _provider_timeout_cfg
                 if _provider_timeout_cfg is not None
-                else float(os.getenv("HERMES_API_TIMEOUT", 1800.0))
+                else float(os.getenv("JUE_API_TIMEOUT", 1800.0))
             )
             # Read timeout: config wins here too.  Otherwise use
-            # HERMES_STREAM_READ_TIMEOUT (default 120s) for cloud providers.
+            # JUE_STREAM_READ_TIMEOUT (default 120s) for cloud providers.
             if _provider_timeout_cfg is not None:
                 _stream_read_timeout = _provider_timeout_cfg
             else:
-                _stream_read_timeout = float(os.getenv("HERMES_STREAM_READ_TIMEOUT", 120.0))
+                _stream_read_timeout = float(os.getenv("JUE_STREAM_READ_TIMEOUT", 120.0))
                 # Local providers (Ollama, llama.cpp, vLLM) can take minutes for
                 # prefill on large contexts before producing the first token.
                 # Auto-increase the httpx read timeout unless the user explicitly
-                # overrode HERMES_STREAM_READ_TIMEOUT.
+                # overrode JUE_STREAM_READ_TIMEOUT.
                 if _stream_read_timeout == 120.0 and self.base_url and is_local_endpoint(self.base_url):
                     _stream_read_timeout = _base_timeout
                     logger.debug(
@@ -5793,7 +5955,7 @@ class AIAgent:
         def _call():
             import httpx as _httpx
 
-            _max_stream_retries = int(os.getenv("HERMES_STREAM_RETRIES", 2))
+            _max_stream_retries = int(os.getenv("JUE_STREAM_RETRIES", 2))
 
             try:
                 for _stream_attempt in range(_max_stream_retries + 1):
@@ -5932,10 +6094,10 @@ class AIAgent:
                 if request_client is not None:
                     self._close_request_openai_client(request_client, reason="stream_request_complete")
 
-        _stream_stale_timeout_base = float(os.getenv("HERMES_STREAM_STALE_TIMEOUT", 180.0))
+        _stream_stale_timeout_base = float(os.getenv("JUE_STREAM_STALE_TIMEOUT", 180.0))
         # Local providers (Ollama, oMLX, llama-cpp) can take 300+ seconds
         # for prefill on large contexts.  Disable the stale detector unless
-        # the user explicitly set HERMES_STREAM_STALE_TIMEOUT.
+        # the user explicitly set JUE_STREAM_STALE_TIMEOUT.
         if _stream_stale_timeout_base == 180.0 and self.base_url and is_local_endpoint(self.base_url):
             _stream_stale_timeout = float("inf")
             logger.debug("Local provider detected (%s) — stale stream timeout disabled", self.base_url)
@@ -6341,6 +6503,193 @@ class AIAgent:
             return True
         except Exception as e:
             logging.warning("Failed to restore primary runtime: %s", e)
+            return False
+
+    def _emit_post_tool_call_hook(
+        self,
+        function_name: str,
+        function_args: dict[str, Any],
+        function_result: Any,
+        effective_task_id: str,
+        tool_call_id: Optional[str] = None,
+    ) -> None:
+        """Mirror post_tool_call for agent-local tools that bypass model_tools."""
+        try:
+            from hermes_cli.plugins import invoke_hook as _invoke_hook
+
+            _invoke_hook(
+                "post_tool_call",
+                tool_name=function_name,
+                args=function_args,
+                result=function_result,
+                task_id=effective_task_id or "",
+                session_id=self.session_id or "",
+                tool_call_id=tool_call_id or "",
+            )
+        except Exception:
+            pass
+
+    def _get_pre_tool_call_block_message(
+        self,
+        function_name: str,
+        function_args: dict[str, Any],
+        effective_task_id: str,
+        *,
+        tool_call_id: Optional[str] = None,
+    ) -> Optional[str]:
+        """Run the shared pre_tool_call hook with full tool metadata."""
+        try:
+            from hermes_cli.plugins import get_pre_tool_call_block_message
+
+            return get_pre_tool_call_block_message(
+                function_name,
+                function_args,
+                task_id=effective_task_id or "",
+                session_id=self.session_id or "",
+                tool_call_id=tool_call_id or "",
+            )
+        except Exception:
+            return None
+
+    def apply_harness_runtime_config(self, api_config) -> bool:
+        """Apply a harness-scoped runtime override without exposing secrets to the model."""
+        if api_config is None:
+            return False
+
+        runtime_provider = (
+            getattr(api_config, "provider", "") or self.provider or ""
+        ).strip().lower()
+        runtime_base_url = (getattr(api_config, "base_url", "") or self.base_url or "").strip()
+        runtime_api_key = getattr(api_config, "api_key", "") or getattr(self, "api_key", "")
+        runtime_api_mode = (getattr(api_config, "api_mode", "") or self.api_mode or "").strip()
+        runtime_model = (getattr(api_config, "model_id", "") or self.model or "").strip()
+        runtime_fallbacks = list(getattr(api_config, "fallback_providers", []) or [])
+        runtime_pool_name = (getattr(api_config, "credential_pool_name", "") or "").strip()
+
+        if not runtime_provider and runtime_base_url:
+            runtime_provider = "custom"
+
+        try:
+            from agent.credential_pool import get_custom_provider_pool_key, load_pool
+        except Exception:
+            load_pool = None
+            get_custom_provider_pool_key = None
+
+        pool_key = runtime_pool_name
+        if not pool_key and runtime_provider and runtime_provider not in {"custom", "auto"}:
+            pool_key = runtime_provider
+        if not pool_key and runtime_base_url and get_custom_provider_pool_key is not None:
+            pool_key = get_custom_provider_pool_key(runtime_base_url) or ""
+        if pool_key and load_pool is not None:
+            try:
+                pool = load_pool(pool_key)
+                self._credential_pool = pool
+                if pool and pool.has_credentials():
+                    entry = pool.select()
+                    if entry is not None:
+                        runtime_api_key = getattr(entry, "access_token", "") or runtime_api_key
+                        runtime_base_url = getattr(entry, "base_url", "") or runtime_base_url
+            except Exception:
+                logger.debug("Could not activate harness credential pool %s", pool_key, exc_info=True)
+
+        if not runtime_api_mode:
+            if runtime_provider == "bedrock":
+                runtime_api_mode = "bedrock_converse"
+            elif runtime_provider == "anthropic" or runtime_base_url.rstrip("/").lower().endswith("/anthropic"):
+                runtime_api_mode = "anthropic_messages"
+            elif self._is_direct_openai_url(runtime_base_url):
+                runtime_api_mode = "codex_responses"
+            else:
+                runtime_api_mode = "chat_completions"
+
+        try:
+            self.model = runtime_model or self.model
+            self.provider = runtime_provider or self.provider
+            self.base_url = runtime_base_url or self.base_url
+            self.api_mode = runtime_api_mode or self.api_mode
+            self.api_key = runtime_api_key or getattr(self, "api_key", "")
+
+            if self.api_mode == "anthropic_messages":
+                from agent.anthropic_adapter import build_anthropic_client, _is_oauth_token
+
+                self._anthropic_api_key = self.api_key
+                self._anthropic_base_url = self.base_url
+                self._anthropic_client = build_anthropic_client(
+                    self._anthropic_api_key,
+                    self._anthropic_base_url,
+                    timeout=get_provider_request_timeout(self.provider, self.model),
+                )
+                self._is_anthropic_oauth = _is_oauth_token(self.api_key) if self.provider == "anthropic" else False
+                self.client = None
+                self._client_kwargs = {}
+            else:
+                self._client_kwargs = {
+                    "api_key": self.api_key,
+                    "base_url": self.base_url,
+                }
+                self._apply_client_headers_for_base_url(self.base_url)
+                self.client = self._create_openai_client(
+                    dict(self._client_kwargs),
+                    reason="harness_runtime",
+                    shared=True,
+                )
+                self._anthropic_client = None
+
+            if hasattr(self, "context_compressor") and self.context_compressor:
+                try:
+                    from agent.model_metadata import get_model_context_length
+
+                    context_length = get_model_context_length(
+                        self.model,
+                        base_url=self.base_url,
+                        api_key=self.api_key,
+                        provider=self.provider,
+                    )
+                except Exception:
+                    context_length = self.context_compressor.context_length
+                self.context_compressor.update_model(
+                    model=self.model,
+                    context_length=context_length,
+                    base_url=self.base_url,
+                    api_key=self.api_key,
+                    provider=self.provider,
+                )
+
+            if runtime_fallbacks:
+                self._fallback_chain = [
+                    fb for fb in runtime_fallbacks
+                    if isinstance(fb, dict) and fb.get("provider") and fb.get("model")
+                ]
+                self._fallback_model = self._fallback_chain[0] if self._fallback_chain else None
+            self._fallback_index = 0
+            self._fallback_activated = False
+
+            _cc = self.context_compressor
+            self._primary_runtime = {
+                "model": self.model,
+                "provider": self.provider,
+                "base_url": self.base_url,
+                "api_mode": self.api_mode,
+                "api_key": getattr(self, "api_key", ""),
+                "client_kwargs": dict(getattr(self, "_client_kwargs", {})),
+                "use_prompt_caching": self._use_prompt_caching,
+                "use_native_cache_layout": self._use_native_cache_layout,
+                "compressor_model": getattr(_cc, "model", self.model),
+                "compressor_base_url": getattr(_cc, "base_url", self.base_url),
+                "compressor_api_key": getattr(_cc, "api_key", ""),
+                "compressor_provider": getattr(_cc, "provider", self.provider),
+                "compressor_context_length": _cc.context_length,
+                "compressor_threshold_tokens": _cc.threshold_tokens,
+            }
+            if self.api_mode == "anthropic_messages":
+                self._primary_runtime.update({
+                    "anthropic_api_key": getattr(self, "_anthropic_api_key", ""),
+                    "anthropic_base_url": getattr(self, "_anthropic_base_url", self.base_url),
+                    "is_anthropic_oauth": getattr(self, "_is_anthropic_oauth", False),
+                })
+            return True
+        except Exception:
+            logger.warning("Failed to apply harness runtime config", exc_info=True)
             return False
 
     # Which error types indicate a transient transport failure worth
@@ -6828,7 +7177,7 @@ class AIAgent:
         _qwen_meta = None
         if _is_qwen:
             _qwen_meta = {
-                "sessionId": self.session_id or "hermes",
+                "sessionId": self.session_id or "jue",
                 "promptId": str(uuid.uuid4()),
             }
 
@@ -7284,15 +7633,41 @@ class AIAgent:
                 if tc.function.name == "memory":
                     try:
                         args = json.loads(tc.function.arguments)
+                        flush_task_id = getattr(self, "_current_task_id", "") or ""
+                        flush_block_msg = self._get_pre_tool_call_block_message(
+                            "memory",
+                            args,
+                            flush_task_id,
+                            tool_call_id=getattr(tc, "id", None),
+                        )
+                        if flush_block_msg is not None:
+                            logger.info("Memory flush write blocked by pre_tool_call hook")
+                            continue
                         flush_target = args.get("target", "memory")
                         from tools.memory_tool import memory_tool as _memory_tool
-                        _memory_tool(
+                        flush_result = _memory_tool(
                             action=args.get("action"),
                             target=flush_target,
                             content=args.get("content"),
                             old_text=args.get("old_text"),
                             store=self._memory_store,
                         )
+                        try:
+                            flush_payload = json.loads(flush_result)
+                        except Exception:
+                            flush_payload = {}
+                        if (
+                            self._memory_manager
+                            and flush_payload.get("success")
+                            and args.get("action") in ("add", "replace")
+                        ):
+                            self._memory_manager.on_memory_write(
+                                args.get("action", ""),
+                                flush_target,
+                                args.get("content", ""),
+                                task_id=getattr(self, "_current_task_id", "") or "",
+                                session_id=self.session_id or "",
+                            )
                         if not self.quiet_mode:
                             print(f"  🧠 Memory flush: saved to {args.get('target', 'memory')}")
                     except Exception as e:
@@ -7337,7 +7712,23 @@ class AIAgent:
             except Exception:
                 pass
 
-        compressed = self.context_compressor.compress(messages, current_tokens=approx_tokens, focus_topic=focus_topic)
+        preserved_context = ""
+        try:
+            from jue.harness3.runtime import build_preserved_context
+
+            preserved_context = build_preserved_context(
+                task_description=getattr(self, "_last_user_message", "") or "",
+                active_harness_id=getattr(self, "_active_harness_id", "") or "",
+            )
+        except Exception:
+            logger.debug("Could not build Jue preserved context for compression", exc_info=True)
+
+        compressed = self.context_compressor.compress(
+            messages,
+            current_tokens=approx_tokens,
+            focus_topic=focus_topic,
+            preserved_context=preserved_context,
+        )
 
         todo_snapshot = self._todo_store.format_for_injection()
         if todo_snapshot:
@@ -7360,7 +7751,7 @@ class AIAgent:
                 self.session_log_file = self.logs_dir / f"session_{self.session_id}.json"
                 self._session_db.create_session(
                     session_id=self.session_id,
-                    source=self.platform or os.environ.get("HERMES_SESSION_SOURCE", "cli"),
+                    source=self.platform or os.environ.get("JUE_SESSION_SOURCE", "cli"),
                     model=self.model,
                     parent_session_id=old_session_id,
                 )
@@ -7462,39 +7853,53 @@ class AIAgent:
         its own inline invocation for backward-compatible display handling.
         """
         # Check plugin hooks for a block directive before executing anything.
-        block_message: Optional[str] = None
-        try:
-            from hermes_cli.plugins import get_pre_tool_call_block_message
-            block_message = get_pre_tool_call_block_message(
-                function_name, function_args, task_id=effective_task_id or "",
-            )
-        except Exception:
-            pass
+        block_message = self._get_pre_tool_call_block_message(
+            function_name,
+            function_args,
+            effective_task_id,
+            tool_call_id=tool_call_id,
+        )
         if block_message is not None:
-            return json.dumps({"error": block_message}, ensure_ascii=False)
+            function_result = json.dumps({"error": block_message}, ensure_ascii=False)
+            self._emit_post_tool_call_hook(
+                function_name, function_args, function_result, effective_task_id, tool_call_id=tool_call_id
+            )
+            return function_result
 
         if function_name == "todo":
             from tools.todo_tool import todo_tool as _todo_tool
-            return _todo_tool(
+            function_result = _todo_tool(
                 todos=function_args.get("todos"),
                 merge=function_args.get("merge", False),
                 store=self._todo_store,
             )
+            self._emit_post_tool_call_hook(
+                function_name, function_args, function_result, effective_task_id, tool_call_id=tool_call_id
+            )
+            return function_result
         elif function_name == "session_search":
             if not self._session_db:
-                return json.dumps({"success": False, "error": "Session database not available."})
+                function_result = json.dumps({"success": False, "error": "Session database not available."})
+                self._emit_post_tool_call_hook(
+                    function_name, function_args, function_result, effective_task_id, tool_call_id=tool_call_id
+                )
+                return function_result
             from tools.session_search_tool import session_search as _session_search
-            return _session_search(
+            function_result = _session_search(
                 query=function_args.get("query", ""),
                 role_filter=function_args.get("role_filter"),
                 limit=function_args.get("limit", 3),
                 db=self._session_db,
                 current_session_id=self.session_id,
             )
+            self._emit_post_tool_call_hook(
+                function_name, function_args, function_result, effective_task_id, tool_call_id=tool_call_id
+            )
+            return function_result
         elif function_name == "memory":
             target = function_args.get("target", "memory")
             from tools.memory_tool import memory_tool as _memory_tool
-            result = _memory_tool(
+            function_result = _memory_tool(
                 action=function_args.get("action"),
                 target=target,
                 content=function_args.get("content"),
@@ -7502,27 +7907,52 @@ class AIAgent:
                 store=self._memory_store,
             )
             # Bridge: notify external memory provider of built-in memory writes
-            if self._memory_manager and function_args.get("action") in ("add", "replace"):
+            try:
+                _memory_payload = json.loads(function_result)
+            except Exception:
+                _memory_payload = {}
+            if (
+                self._memory_manager
+                and _memory_payload.get("success")
+                and function_args.get("action") in ("add", "replace")
+            ):
                 try:
                     self._memory_manager.on_memory_write(
                         function_args.get("action", ""),
                         target,
                         function_args.get("content", ""),
+                        task_id=effective_task_id or "",
+                        session_id=self.session_id or "",
                     )
                 except Exception:
                     pass
-            return result
+            self._emit_post_tool_call_hook(
+                function_name, function_args, function_result, effective_task_id, tool_call_id=tool_call_id
+            )
+            return function_result
         elif self._memory_manager and self._memory_manager.has_tool(function_name):
-            return self._memory_manager.handle_tool_call(function_name, function_args)
+            function_result = self._memory_manager.handle_tool_call(function_name, function_args)
+            self._emit_post_tool_call_hook(
+                function_name, function_args, function_result, effective_task_id, tool_call_id=tool_call_id
+            )
+            return function_result
         elif function_name == "clarify":
             from tools.clarify_tool import clarify_tool as _clarify_tool
-            return _clarify_tool(
+            function_result = _clarify_tool(
                 question=function_args.get("question", ""),
                 choices=function_args.get("choices"),
                 callback=self.clarify_callback,
             )
+            self._emit_post_tool_call_hook(
+                function_name, function_args, function_result, effective_task_id, tool_call_id=tool_call_id
+            )
+            return function_result
         elif function_name == "delegate_task":
-            return self._dispatch_delegate_task(function_args)
+            function_result = self._dispatch_delegate_task(function_args)
+            self._emit_post_tool_call_hook(
+                function_name, function_args, function_result, effective_task_id, tool_call_id=tool_call_id
+            )
+            return function_result
         else:
             return handle_function_call(
                 function_name, function_args, effective_task_id,
@@ -7891,14 +8321,12 @@ class AIAgent:
                 function_args = {}
 
             # Check plugin hooks for a block directive before executing.
-            _block_msg: Optional[str] = None
-            try:
-                from hermes_cli.plugins import get_pre_tool_call_block_message
-                _block_msg = get_pre_tool_call_block_message(
-                    function_name, function_args, task_id=effective_task_id or "",
-                )
-            except Exception:
-                pass
+            _block_msg = self._get_pre_tool_call_block_message(
+                function_name,
+                function_args,
+                effective_task_id,
+                tool_call_id=tool_call.id,
+            )
 
             if _block_msg is not None:
                 # Tool blocked by plugin policy — skip counter resets.
@@ -8013,12 +8441,22 @@ class AIAgent:
                     store=self._memory_store,
                 )
                 # Bridge: notify external memory provider of built-in memory writes
-                if self._memory_manager and function_args.get("action") in ("add", "replace"):
+                try:
+                    _memory_payload = json.loads(function_result)
+                except Exception:
+                    _memory_payload = {}
+                if (
+                    self._memory_manager
+                    and _memory_payload.get("success")
+                    and function_args.get("action") in ("add", "replace")
+                ):
                     try:
                         self._memory_manager.on_memory_write(
                             function_args.get("action", ""),
                             target,
                             function_args.get("content", ""),
+                            task_id=effective_task_id or "",
+                            session_id=self.session_id or "",
                         )
                     except Exception:
                         pass
@@ -8148,6 +8586,20 @@ class AIAgent:
                     function_result = f"Error executing tool '{function_name}': {tool_error}"
                     logger.error("handle_function_call raised for %s: %s", function_name, tool_error, exc_info=True)
                 tool_duration = time.time() - tool_start_time
+
+            if (
+                _block_msg is not None
+                or function_name in {"todo", "session_search", "memory", "clarify", "delegate_task"}
+                or (self._context_engine_tool_names and function_name in self._context_engine_tool_names)
+                or (self._memory_manager and self._memory_manager.has_tool(function_name))
+            ):
+                self._emit_post_tool_call_hook(
+                    function_name,
+                    function_args,
+                    function_result,
+                    effective_task_id,
+                    tool_call_id=tool_call.id,
+                )
 
             result_preview = function_result if self.verbose_logging else (
                 function_result[:200] if len(function_result) > 200 else function_result
@@ -8302,7 +8754,7 @@ class AIAgent:
                         "effort": "medium"
                     }
             if _is_nous:
-                summary_extra_body["tags"] = ["product=hermes-agent"]
+                summary_extra_body["tags"] = ["product=jue-agent"]
 
             if self.api_mode == "codex_responses":
                 codex_kwargs = self._build_api_kwargs(api_messages)
@@ -8447,8 +8899,8 @@ class AIAgent:
         _install_safe_stdio()
 
         # Tag all log records on this thread with the session ID so
-        # ``hermes logs --session <id>`` can filter a single conversation.
-        from hermes_logging import set_session_context
+        # ``jue logs --session <id>`` can filter a single conversation.
+        from jue_logging import set_session_context
         set_session_context(self.session_id)
 
         # If the previous turn activated fallback, restore the primary
@@ -8554,6 +9006,20 @@ class AIAgent:
 
         # Preserve the original user message (no nudge injection).
         original_user_message = persist_user_message if persist_user_message is not None else user_message
+        self._last_user_message = original_user_message or ""
+
+        # API server / ACP / gateway continuations often recreate AIAgent
+        # instances per request. Recover the active harness from transcript
+        # history so Jue prompt assembly stays consistent across resume/fork.
+        if not (getattr(self, "_active_harness_id", "") or "") and conversation_history:
+            try:
+                from jue.harness3.runtime import restore_active_harness_id
+
+                restored_harness_id = restore_active_harness_id(conversation_history)
+                if restored_harness_id:
+                    self._active_harness_id = restored_harness_id
+            except Exception:
+                logger.debug("Could not restore active harness from history", exc_info=True)
 
         # Track memory nudge trigger (turn-based, checked here).
         # Skill trigger is checked AFTER the agent loop completes, based on
@@ -8576,7 +9042,14 @@ class AIAgent:
         if not self.quiet_mode:
             _print_preview = _summarize_user_message_for_log(user_message)
             self._safe_print(f"💬 Starting conversation: '{_print_preview[:60]}{'...' if len(_print_preview) > 60 else ''}'")
-        
+
+        jue_prompt_seed = (
+            getattr(self, "_last_user_message", "") or "",
+            getattr(self, "_active_harness_id", "") or "",
+        )
+        if getattr(self, "_cached_system_prompt_seed", None) != jue_prompt_seed:
+            self._cached_system_prompt = None
+
         # ── System prompt (cached per session for prefix caching) ──
         # Built once on first call, reused for all subsequent calls.
         # Only rebuilt after context compression events (which invalidate
@@ -8590,7 +9063,7 @@ class AIAgent:
         # prefix cache.
         if self._cached_system_prompt is None:
             stored_prompt = None
-            if conversation_history and self._session_db:
+            if conversation_history and self._session_db and not any(jue_prompt_seed):
                 try:
                     session_row = self._session_db.get_session(self.session_id)
                     if session_row:
@@ -8602,9 +9075,11 @@ class AIAgent:
                 # Continuing session — reuse the exact system prompt from
                 # the previous turn so the Anthropic cache prefix matches.
                 self._cached_system_prompt = stored_prompt
+                self._cached_system_prompt_seed = jue_prompt_seed
             else:
                 # First turn of a new session — build from scratch.
                 self._cached_system_prompt = self._build_system_prompt(system_message)
+                self._cached_system_prompt_seed = jue_prompt_seed
                 # Plugin hook: on_session_start
                 # Fired once when a brand-new session is created (not on
                 # continuation).  Plugins can use this to initialise
@@ -8626,6 +9101,8 @@ class AIAgent:
                         self._session_db.update_system_prompt(self.session_id, self._cached_system_prompt)
                     except Exception as e:
                         logger.debug("Session DB update_system_prompt failed: %s", e)
+        else:
+            self._cached_system_prompt_seed = jue_prompt_seed
 
         active_system_prompt = self._cached_system_prompt
 
@@ -8705,7 +9182,7 @@ class AIAgent:
         # Context is ALWAYS injected into the user message, never the
         # system prompt.  This preserves the prompt cache prefix — the
         # system prompt stays identical across turns so cached tokens
-        # are reused.  The system prompt is Hermes's territory; plugins
+        # are reused.  The system prompt is Jue's territory; plugins
         # contribute context alongside the user's input.
         #
         # All injected context is ephemeral (not persisted to session DB).
@@ -8958,7 +9435,7 @@ class AIAgent:
             # NOTE: Plugin context from pre_llm_call hooks is injected into the
             # user message (see injection block above), NOT the system prompt.
             # This is intentional — system prompt modifications break the prompt
-            # cache prefix.  The system prompt is reserved for Hermes internals.
+            # cache prefix.  The system prompt is reserved for Jue internals.
             if effective_system:
                 api_messages = [{"role": "system", "content": effective_system}] + api_messages
 
@@ -9154,7 +9631,7 @@ class AIAgent:
                     except Exception:
                         pass
 
-                    if env_var_enabled("HERMES_DUMP_REQUESTS"):
+                    if env_var_enabled("JUE_DUMP_REQUESTS"):
                         self._dump_api_request_debug(api_kwargs, reason="preflight")
 
                     # Always prefer the streaming path — even without stream
@@ -10018,14 +10495,14 @@ class AIAgent:
                         print(f"{self.log_prefix}   Auth method: {auth_method}")
                         print(f"{self.log_prefix}   Token prefix: {key[:12]}..." if key and len(key) > 12 else f"{self.log_prefix}   Token: (empty or short)")
                         print(f"{self.log_prefix}   Troubleshooting:")
-                        from hermes_constants import display_hermes_home as _dhh_fn
+                        from jue_constants import display_jue_home as _dhh_fn
                         _dhh = _dhh_fn()
-                        print(f"{self.log_prefix}     • Check ANTHROPIC_TOKEN in {_dhh}/.env for Hermes-managed OAuth/setup tokens")
+                        print(f"{self.log_prefix}     • Check ANTHROPIC_TOKEN in {_dhh}/.env for Jue-managed OAuth/setup tokens")
                         print(f"{self.log_prefix}     • Check ANTHROPIC_API_KEY in {_dhh}/.env for API keys or legacy token values")
                         print(f"{self.log_prefix}     • For API keys: verify at https://platform.claude.com/settings/keys")
                         print(f"{self.log_prefix}     • For Claude Code: run 'claude /login' to refresh, then retry")
-                        print(f"{self.log_prefix}     • Legacy cleanup: hermes config set ANTHROPIC_TOKEN \"\"")
-                        print(f"{self.log_prefix}     • Clear stale keys: hermes config set ANTHROPIC_API_KEY \"\"")
+                        print(f"{self.log_prefix}     • Legacy cleanup: jue config set ANTHROPIC_TOKEN \"\"")
+                        print(f"{self.log_prefix}     • Clear stale keys: jue config set ANTHROPIC_API_KEY \"\"")
 
                     # ── Thinking block signature recovery ─────────────────
                     # Anthropic signs thinking blocks against the full turn
@@ -10485,10 +10962,10 @@ class AIAgent:
                                 self._vprint(f"{self.log_prefix}   💡 Codex OAuth token was rejected (HTTP 401). Your token may have been", force=True)
                                 self._vprint(f"{self.log_prefix}      refreshed by another client (Codex CLI, VS Code). To fix:", force=True)
                                 self._vprint(f"{self.log_prefix}      1. Run `codex` in your terminal to generate fresh tokens.", force=True)
-                                self._vprint(f"{self.log_prefix}      2. Then run `hermes auth` to re-authenticate.", force=True)
+                                self._vprint(f"{self.log_prefix}      2. Then run `jue auth` to re-authenticate.", force=True)
                             else:
                                 self._vprint(f"{self.log_prefix}   💡 Your API key was rejected by the provider. Check:", force=True)
-                                self._vprint(f"{self.log_prefix}      • Is the key valid? Run: hermes setup", force=True)
+                                self._vprint(f"{self.log_prefix}      • Is the key valid? Run: jue setup", force=True)
                                 self._vprint(f"{self.log_prefix}      • Does your account have access to {_model}?", force=True)
                                 if base_url_host_matches(str(_base), "openrouter.ai"):
                                     self._vprint(f"{self.log_prefix}      • Check credits: https://openrouter.ai/settings/credits", force=True)
@@ -11156,14 +11633,11 @@ class AIAgent:
                     if _tc_names == {"execute_code"}:
                         self.iteration_budget.refund()
                     
-                    # Use real token counts from the API response to decide
-                    # compression.  prompt_tokens + completion_tokens is the
-                    # actual context size the provider reported plus the
-                    # assistant turn — a tight lower bound for the next prompt.
-                    # Tool results appended above aren't counted yet, but the
-                    # threshold (default 50%) leaves ample headroom; if tool
-                    # results push past it, the next API call will report the
-                    # real total and trigger compression then.
+                    # Use the API-reported prompt token count to decide
+                    # compression.  Completion/reasoning tokens do not occupy
+                    # the next request's context window; tool results appended
+                    # above are picked up by the next API usage report or by
+                    # the rough fallback below.
                     #
                     # If last_prompt_tokens is 0 (stale after API disconnect
                     # or provider returned no usage data), fall back to rough
@@ -11700,13 +12174,29 @@ class AIAgent:
         # Clear stream callback so it doesn't leak into future calls
         self._stream_callback = None
 
-        # Check skill trigger NOW — based on how many tool iterations THIS turn used.
-        _should_review_skills = False
-        if (self._skill_nudge_interval > 0
-                and self._iters_since_skill >= self._skill_nudge_interval
-                and "skill_manage" in self.valid_tool_names):
-            _should_review_skills = True
-            self._iters_since_skill = 0
+        # Jue accumulation is dual-track:
+        # - skill review still exists for reusable procedures
+        # - the same review pass must also consider judgment triplets
+        #
+        # We trigger when either the old skill cadence says "it's time to
+        # review accumulated procedure knowledge" OR Jue sees an intent-gap /
+        # judgment-heavy task shape worth checking for triplets.
+        _jue_judgment_review = _should_trigger_jue_judgment_review(
+            original_user_message or "",
+            messages,
+            final_response,
+        )
+        _should_review_skills = bool(
+            final_response
+            and "skill_manage" in self.valid_tool_names
+            and (
+                _jue_judgment_review
+                or (
+                    self._skill_nudge_interval > 0
+                    and self._iters_since_skill >= self._skill_nudge_interval
+                )
+            )
+        )
 
         # External memory provider: sync the completed turn + queue next prefetch.
         # Use original_user_message (clean input) — user_message may contain
@@ -11721,6 +12211,8 @@ class AIAgent:
         # Background memory/skill review — runs AFTER the response is delivered
         # so it never competes with the user's task for model attention.
         if final_response and not interrupted and (_should_review_memory or _should_review_skills):
+            if _should_review_skills:
+                self._iters_since_skill = 0
             try:
                 self._spawn_background_review(
                     messages_snapshot=list(messages),
@@ -11745,10 +12237,14 @@ class AIAgent:
             _invoke_hook(
                 "on_session_end",
                 session_id=self.session_id,
+                task_id=effective_task_id,
                 completed=completed,
                 interrupted=interrupted,
                 model=self.model,
                 platform=getattr(self, "platform", None) or "",
+                user_message=original_user_message or "",
+                final_response=final_response or "",
+                messages=list(messages),
             )
         except Exception as exc:
             logger.warning("on_session_end hook failed: %s", exc)

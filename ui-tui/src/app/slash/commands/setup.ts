@@ -1,31 +1,31 @@
-import { withInkSuspended } from '@hermes/ink'
+import { withInkSuspended } from '@jue/ink'
 
-import { launchHermesCommand } from '../../../lib/externalCli.js'
+import { launchJueCommand } from '../../../lib/externalCli.js'
 import { runExternalSetup } from '../../setupHandoff.js'
 import type { SlashCommand } from '../types.js'
 
 export const setupCommands: SlashCommand[] = [
   {
-    help: 'configure LLM provider + model (launches `hermes model`)',
+    help: 'configure LLM provider + model (launches `jue model`)',
     name: 'provider',
     run: (_arg, ctx) =>
       void runExternalSetup({
         args: ['model'],
         ctx,
         done: 'provider updated — starting session…',
-        launcher: launchHermesCommand,
+        launcher: launchJueCommand,
         suspend: withInkSuspended
       })
   },
   {
-    help: 'run full setup wizard (launches `hermes setup`)',
+    help: 'run full setup wizard (launches `jue setup`)',
     name: 'setup',
     run: (arg, ctx) =>
       void runExternalSetup({
         args: ['setup', ...arg.split(/\s+/).filter(Boolean)],
         ctx,
         done: 'setup complete — starting session…',
-        launcher: launchHermesCommand,
+        launcher: launchJueCommand,
         suspend: withInkSuspended
       })
   }

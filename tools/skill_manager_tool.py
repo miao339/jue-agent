@@ -4,7 +4,7 @@ Skill Manager Tool -- Agent-Managed Skill Creation & Editing
 
 Allows the agent to create, update, and delete skills, turning successful
 approaches into reusable procedural knowledge. New skills are created in
-~/.hermes/skills/. Existing skills (bundled, hub-installed, or user-created)
+~/.jue/skills/. Existing skills (bundled, hub-installed, or user-created)
 can be modified or deleted wherever they live.
 
 Skills are the agent's procedural memory: they capture *how to do a specific
@@ -20,7 +20,7 @@ Actions:
   remove_file-- Remove a supporting file from a user skill
 
 Directory layout for user skills:
-    ~/.hermes/skills/
+    ~/.jue/skills/
     ├── my-skill/
     │   ├── SKILL.md
     │   ├── references/
@@ -39,7 +39,7 @@ import re
 import shutil
 import tempfile
 from pathlib import Path
-from hermes_constants import get_hermes_home, display_hermes_home
+from jue_constants import get_jue_home, display_jue_home
 from typing import Dict, Any, Optional, Tuple
 
 logger = logging.getLogger(__name__)
@@ -76,9 +76,9 @@ def _security_scan_skill(skill_dir: Path) -> Optional[str]:
 import yaml
 
 
-# All skills live in ~/.hermes/skills/ (single source of truth)
-HERMES_HOME = get_hermes_home()
-SKILLS_DIR = HERMES_HOME / "skills"
+# All skills live in ~/.jue/skills/ (single source of truth)
+JUE_HOME = get_jue_home()
+SKILLS_DIR = JUE_HOME / "skills"
 
 MAX_NAME_LENGTH = 64
 MAX_DESCRIPTION_LENGTH = 1024
@@ -212,7 +212,7 @@ def _find_skill(name: str) -> Optional[Dict[str, Any]]:
     """
     Find a skill by name across all skill directories.
 
-    Searches the local skills dir (~/.hermes/skills/) first, then any
+    Searches the local skills dir (~/.jue/skills/) first, then any
     external dirs configured via skills.external_dirs.  Returns
     {"path": Path} or None.
     """
@@ -615,6 +615,402 @@ def _remove_file(name: str, file_path: str) -> Dict[str, Any]:
     }
 
 
+def _record_triplet(name: str, content: str | None, task_id: str = "", session_id: str = "") -> Dict[str, Any]:
+    """Record a judgment triplet into Harness③.
+
+    name: used as a short label/tag for the triplet
+    content: JSON string with fields: situation, judgment, structure, track, tags
+    task_id: current task ID (auto-filled from agent context if available)
+    session_id: current session ID (auto-filled from agent context if available)
+    """
+    if not content:
+        return {"success": False, "error": "content is required for 'record_triplet'. Provide situation, judgment, and structure."}
+
+    try:
+        from jue.harness3.store import JudgmentTriplet, TripletMetaCheck, TripletStore
+    except ImportError:
+        return {"success": False, "error": "Jue harness3 module not available. Cannot record triplet."}
+
+    # Parse content — can be JSON or plain text with sections
+    try:
+        fields = json.loads(content)
+    except json.JSONDecodeError:
+        # Try parsing as structured text: "situation: ... judgment: ... structure: ..."
+        fields = _parse_triplet_text(content)
+
+    if not fields.get("situation") or not fields.get("judgment") or not fields.get("structure"):
+        return {
+            "success": False,
+            "error": "Triplet requires all three fields: situation (what you encountered), judgment (why you decided), structure (what direction this points to). Missing one degrades to skill-only accumulation.",
+        }
+
+    # Build tags: merge explicit tags from content with name-based tag
+    explicit_tags = fields.get("tags", [])
+    name_tag = name.strip().lower().replace(" ", "-") if name and name not in explicit_tags else None
+    final_tags = list(explicit_tags)
+    if name_tag:
+        final_tags.append(name_tag)
+
+    # Resolve task_id / session_id: prefer explicit args, then try agent context
+    resolved_task_id = task_id
+    resolved_session_id = session_id
+    if not resolved_task_id or not resolved_session_id:
+        try:
+            import run_agent as _ra
+            # Walk the call stack to find the AIAgent instance
+            import inspect
+            for frame_info in inspect.stack():
+                frame_locals = frame_info[0].f_locals
+                agent = frame_locals.get("self")
+                if isinstance(agent, _ra.AIAgent):
+                    if not resolved_task_id:
+                        resolved_task_id = getattr(agent, "_current_task_id", "") or ""
+                    if not resolved_session_id:
+                        resolved_session_id = getattr(agent, "session_id", "") or ""
+                    break
+        except Exception:
+            pass
+
+    triplet = JudgmentTriplet(
+        situation=fields["situation"],
+        judgment=fields["judgment"],
+        structure=fields["structure"],
+        tags=final_tags,
+        track=fields.get("track", "harness"),
+        task_id=resolved_task_id,
+        session_id=resolved_session_id,
+    )
+
+    # Meta-check: ask the model's self-assessment
+    meta_answer = fields.get("meta_check_answer", "")
+    meta_passed = True
+    if meta_answer:
+        # If model explicitly says this is "规定动作" rather than "指出方向", flag it
+        if any(kw in meta_answer.lower() for kw in ["规定动作", "rule", "prescribe", "if-then", "步骤"]):
+            meta_passed = False
+
+    meta_check = TripletMetaCheck(
+        passed=meta_passed,
+        answer=meta_answer,
+    )
+
+    store = TripletStore()
+    triplet_id = store.write(triplet, meta_check)
+
+    if not triplet_id:
+        return {"success": False, "error": "Triplet write failed. Check that all three fields are non-empty."}
+
+    return {
+        "success": True,
+        "message": f"Judgment triplet recorded: {triplet_id} (track={triplet.track})",
+        "triplet_id": triplet_id,
+        "meta_check_passed": meta_passed,
+        "meta_check_question": meta_check.question,
+    }
+
+
+def _flag_triplet(name: str, content: str | None) -> Dict[str, Any]:
+    """Flag a triplet as potentially problematic (status -> flagged).
+
+    name: triplet_id to flag
+    content: optional reason for flagging
+    """
+    triplet_id = name.strip()
+    if not triplet_id:
+        return {"success": False, "error": "triplet_id (name field) is required for 'flag_triplet'."}
+
+    try:
+        from jue.harness3.store import TripletStore
+    except ImportError:
+        return {"success": False, "error": "Jue harness3 module not available."}
+
+    store = TripletStore()
+    ok = store.update_status(triplet_id, "flagged")
+    if not ok:
+        return {"success": False, "error": f"Could not flag triplet '{triplet_id}'. Not found or invalid."}
+
+    reason = content.strip() if content else ""
+    return {
+        "success": True,
+        "message": f"Triplet {triplet_id} flagged.",
+        "triplet_id": triplet_id,
+        "new_status": "flagged",
+        "reason": reason,
+    }
+
+
+def _revoke_triplet(name: str, content: str | None) -> Dict[str, Any]:
+    """Revoke a triplet entirely (status -> revoked).
+
+    name: triplet_id to revoke
+    content: optional reason for revocation
+    """
+    triplet_id = name.strip()
+    if not triplet_id:
+        return {"success": False, "error": "triplet_id (name field) is required for 'revoke_triplet'."}
+
+    try:
+        from jue.harness3.store import TripletStore
+    except ImportError:
+        return {"success": False, "error": "Jue harness3 module not available."}
+
+    store = TripletStore()
+    ok = store.update_status(triplet_id, "revoked")
+    if not ok:
+        return {"success": False, "error": f"Could not revoke triplet '{triplet_id}'. Not found or invalid."}
+
+    reason = content.strip() if content else ""
+    return {
+        "success": True,
+        "message": f"Triplet {triplet_id} revoked.",
+        "triplet_id": triplet_id,
+        "new_status": "revoked",
+        "reason": reason,
+    }
+
+
+def _parse_triplet_text(text: str) -> dict:
+    """Parse structured text into triplet fields.
+
+    Accepts formats like:
+    situation: ...
+    judgment: ...
+    structure: ...
+    """
+    fields = {}
+    patterns = {
+        "name": r"name\s*[:：]\s*(.+?)(?=category|situation|judgment|structure|$)",
+        "category": r"category\s*[:：]\s*(.+?)(?=name|situation|judgment|structure|$)",
+        "situation": r"situation\s*[:：]\s*(.+?)(?=name|category|judgment|structure|$)",
+        "judgment": r"judgment\s*[:：]\s*(.+?)(?=name|category|situation|structure|$)",
+        "structure": r"structure\s*[:：]\s*(.+?)(?=name|category|situation|judgment|$)",
+    }
+    for key, pattern in patterns.items():
+        match = re.search(pattern, text, re.IGNORECASE | re.DOTALL)
+        if match:
+            fields[key] = match.group(1).strip()
+    return fields
+
+
+# =============================================================================
+# Harness action handlers (generate, evolve, list, use)
+# =============================================================================
+
+def _generate_harness(name: str, content: str | None, category: str | None = None) -> Dict[str, Any]:
+    """Generate a harness record from current judgment context.
+
+    name: human-readable harness title
+    category: human-readable harness category
+    content: JSON string with fields:
+        situation, judgment, structure,
+        root_paradigm_fragment (optional, can only narrow main paradigm),
+        soul (optional, can differ from main SOUL),
+        api_config_name (optional, references config.json entry),
+        tags (optional list),
+        evolution_direction (optional, describes when this harness might need to evolve)
+    """
+    if not content:
+        return {"success": False, "error": "content is required for 'generate_harness'. Provide situation, judgment, and structure."}
+
+    try:
+        from jue.harness3.store import HarnessRecord, HarnessStore
+    except ImportError:
+        return {"success": False, "error": "Jue harness3 module not available."}
+
+    try:
+        fields = json.loads(content)
+    except json.JSONDecodeError:
+        fields = _parse_triplet_text(content)
+
+    human_name = str(fields.get("name") or name or "").strip()
+    human_category = str(fields.get("category") or category or "").strip()
+
+    if not human_name or not human_category:
+        return {"success": False, "error": "Harness requires name and category. Both are non-optional."}
+
+    if not fields.get("situation") or not fields.get("judgment") or not fields.get("structure"):
+        return {"success": False, "error": "Harness requires situation, judgment, and structure. All three are non-optional."}
+
+    # Build tags: merge explicit tags with name-based tag
+    explicit_tags = fields.get("tags", [])
+    name_tag = human_name.lower().replace(" ", "-") if human_name and human_name not in explicit_tags else None
+    final_tags = list(explicit_tags)
+    if name_tag:
+        final_tags.append(name_tag)
+    if human_category not in final_tags:
+        final_tags.append(human_category)
+
+    record = HarnessRecord(
+        name=human_name,
+        category=human_category,
+        situation=fields["situation"],
+        judgment=fields["judgment"],
+        structure=fields["structure"],
+        root_paradigm_fragment=fields.get("root_paradigm_fragment", ""),
+        soul=fields.get("soul", ""),
+        api_config_name=fields.get("api_config_name", ""),
+        tags=final_tags,
+        track="harness",
+        evolution_direction=fields.get("evolution_direction", ""),
+    )
+
+    store = HarnessStore()
+    harness_id = store.write(record)
+
+    if not harness_id:
+        return {"success": False, "error": "Harness write failed. Check that all three core fields are non-empty."}
+
+    return {
+        "success": True,
+        "message": f"Harness generated: {harness_id}",
+        "harness_id": harness_id,
+        "name": human_name,
+        "category": human_category,
+        "version": 1,
+    }
+
+
+def _evolve_harness(name: str, content: str | None) -> Dict[str, Any]:
+    """Evolve an existing harness to a new version.
+
+    name: harness_id of the harness to evolve
+    content: JSON string with updated fields + evolution_reason + evolution_direction (optional)
+    """
+    if not name:
+        return {"success": False, "error": "name (harness_id) is required for 'evolve_harness'."}
+    if not content:
+        return {"success": False, "error": "content is required for 'evolve_harness'. Provide updated fields and evolution_reason."}
+
+    try:
+        from jue.harness3.store import HarnessRecord, HarnessStore
+    except ImportError:
+        return {"success": False, "error": "Jue harness3 module not available."}
+
+    try:
+        fields = json.loads(content)
+    except json.JSONDecodeError:
+        fields = _parse_triplet_text(content)
+
+    reason = fields.get("evolution_reason", fields.get("reason", ""))
+
+    store = HarnessStore()
+    old = store.get(name)
+    if not old:
+        return {"success": False, "error": f"Harness '{name}' not found. Cannot evolve non-existent harness."}
+
+    # Build updated record from old + new fields
+    updated = HarnessRecord(
+        name=fields.get("name", old.name),
+        category=fields.get("category", old.category),
+        situation=fields.get("situation", old.situation),
+        judgment=fields.get("judgment", old.judgment),
+        structure=fields.get("structure", old.structure),
+        root_paradigm_fragment=fields.get("root_paradigm_fragment", old.root_paradigm_fragment),
+        soul=fields.get("soul", old.soul),
+        api_config_name=fields.get("api_config_name", old.api_config_name),
+        tags=fields.get("tags", old.tags),
+        track="harness",
+        evolution_direction=fields.get("evolution_direction", old.evolution_direction),
+    )
+
+    new_id = store.evolve(name, updated, reason=reason)
+    if not new_id:
+        return {"success": False, "error": "Harness evolution failed."}
+
+    new_rec = store.get(new_id)
+    return {
+        "success": True,
+        "message": f"Harness evolved: {new_id} → v{new_rec.version}",
+        "harness_id": new_id,
+        "name": new_rec.name,
+        "category": new_rec.category,
+        "version": new_rec.version,
+        "evolution_reason": reason,
+    }
+
+
+def _list_harnesses(name: str, content: str | None) -> Dict[str, Any]:
+    """List harness records, optionally filtered by tags.
+
+    name: unused (kept for API consistency)
+    content: optional JSON with 'tags' (list) and 'limit' (int)
+    """
+    try:
+        from jue.harness3.store import HarnessStore
+    except ImportError:
+        return {"success": False, "error": "Jue harness3 module not available."}
+
+    tags = None
+    limit = 20
+    if content:
+        try:
+            fields = json.loads(content)
+            tags = fields.get("tags")
+            limit = fields.get("limit", 20)
+        except json.JSONDecodeError:
+            pass
+
+    store = HarnessStore()
+    results = store.list_harnesses(tags=tags, limit=limit)
+
+    return {
+        "success": True,
+        "count": len(results),
+        "harnesses": results,
+    }
+
+
+def _use_harness(name: str, content: str | None) -> Dict[str, Any]:
+    """Load a harness for injection into the current context.
+
+    name: harness_id to load
+    content: unused
+
+    Returns the full harness record including root_paradigm_fragment and soul
+    for orientation.py to inject.
+    """
+    if not name:
+        return {"success": False, "error": "name (harness_id) is required for 'use_harness'."}
+
+    try:
+        from jue.harness3.store import HarnessStore
+        from jue.harness3.harness_config import resolve_api
+    except ImportError:
+        return {"success": False, "error": "Jue harness3 module not available."}
+
+    store = HarnessStore()
+    record = store.get(name)
+    if not record:
+        return {"success": False, "error": f"Harness '{name}' not found."}
+
+    # Resolve API config for this harness
+    api = resolve_api(record.api_config_name)
+
+    return {
+        "success": True,
+        "harness_id": record.harness_id,
+        "name": record.name,
+        "category": record.category,
+        "version": record.version,
+        "situation": record.situation,
+        "judgment": record.judgment,
+        "structure": record.structure,
+        "root_paradigm_fragment": record.root_paradigm_fragment,
+        "soul": record.soul,
+        "api_config_name": record.api_config_name,
+        "api_resolved": {
+            "provider": api.provider,
+            "base_url": api.base_url,
+            "api_mode": api.api_mode,
+            "model_id": api.model_id,
+            "credential_pool_name": api.credential_pool_name,
+            "fallbacks": len(api.fallback_providers),
+            # api_key intentionally NOT returned to model
+        },
+        "tags": record.tags,
+    }
+
+
 # =============================================================================
 # Main entry point
 # =============================================================================
@@ -629,6 +1025,8 @@ def skill_manage(
     old_string: str = None,
     new_string: str = None,
     replace_all: bool = False,
+    task_id: str = "",
+    session_id: str = "",
 ) -> str:
     """
     Manage user-created skills. Dispatches to the appropriate action handler.
@@ -667,8 +1065,29 @@ def skill_manage(
             return tool_error("file_path is required for 'remove_file'.", success=False)
         result = _remove_file(name, file_path)
 
+    elif action == "record_triplet":
+        result = _record_triplet(name, content, task_id=task_id, session_id=session_id)
+
+    elif action == "flag_triplet":
+        result = _flag_triplet(name, content)
+
+    elif action == "revoke_triplet":
+        result = _revoke_triplet(name, content)
+
+    elif action == "generate_harness":
+        result = _generate_harness(name, content, category=category)
+
+    elif action == "evolve_harness":
+        result = _evolve_harness(name, content)
+
+    elif action == "list_harnesses":
+        result = _list_harnesses(name, content)
+
+    elif action == "use_harness":
+        result = _use_harness(name, content)
+
     else:
-        result = {"success": False, "error": f"Unknown action '{action}'. Use: create, edit, patch, delete, write_file, remove_file"}
+        result = {"success": False, "error": f"Unknown action '{action}'. Use: create, edit, patch, delete, write_file, remove_file, record_triplet, generate_harness, evolve_harness, list_harnesses, use_harness"}
 
     if result.get("success"):
         try:
@@ -676,6 +1095,28 @@ def skill_manage(
             clear_skills_system_prompt_cache(clear_snapshot=True)
         except Exception:
             pass
+
+        # Jue: use_harness成功时，把harness_id存到agent实例上，让下次prompt构建时注入
+        if action == "use_harness" and result.get("harness_id"):
+            try:
+                import run_agent as _ra
+                from jue.harness3.harness_config import resolve_api
+                import inspect
+                for frame_info in inspect.stack():
+                    frame_locals = frame_info[0].f_locals
+                    agent = frame_locals.get("self")
+                    if isinstance(agent, _ra.AIAgent):
+                        agent._active_harness_id = result["harness_id"]
+                        agent._active_harness_api_config_name = result.get("api_config_name", "") or ""
+                        api_cfg = resolve_api(result.get("api_config_name", "") or "")
+                        if hasattr(agent, "apply_harness_runtime_config"):
+                            agent.apply_harness_runtime_config(api_cfg)
+                        # 清system prompt缓存，下次turn会重建
+                        if hasattr(agent, '_cached_system_prompt'):
+                            agent._cached_system_prompt = None
+                        break
+            except Exception:
+                pass
 
     return json.dumps(result, ensure_ascii=False)
 
@@ -687,16 +1128,22 @@ def skill_manage(
 SKILL_MANAGE_SCHEMA = {
     "name": "skill_manage",
     "description": (
-        "Manage skills (create, update, delete). Skills are your procedural "
-        "memory — reusable approaches for recurring task types. "
-        f"New skills go to {display_hermes_home()}/skills/; existing skills can be modified wherever they live.\n\n"
-        "Actions: create (full SKILL.md + optional category), "
-        "patch (old_string/new_string — preferred for fixes), "
-        "edit (full SKILL.md rewrite — major overhauls only), "
-        "delete, write_file, remove_file.\n\n"
-        "Create when: complex task succeeded (5+ calls), errors overcome, "
-        "user-corrected approach worked, non-trivial workflow discovered, "
-        "or user asks you to remember a procedure.\n"
+        "Manage skills and judgment triplets. Jue has two tracks of accumulation:\n"
+        "- Skills: reusable approaches for recurring task types (做法)\n"
+        "- Harness triplets: judgment records — situation + judgment process + generated structure (为什么这么做)\n\n"
+        f"Skills go to {display_jue_home()}/skills/; triplets go to {display_jue_home()}/harness3/\n\n"
+        "Actions: create, patch, edit, delete, write_file, remove_file, record_triplet, generate_harness, evolve_harness, list_harnesses, use_harness\n\n"
+        "Create skill when: you discover a reusable procedure worth remembering.\n"
+        "Record triplet when: you made a judgment worth accumulating — "
+        "the situation, why you judged as you did, and what direction it points to.\n"
+        "Do NOT wait for a tool-call count threshold. Only record when you genuinely "
+        "judge that this experience contains something worth carrying forward.\n\n"
+        "Triplet format (for record_triplet):\\n"
+        "  situation: what you encountered (specific, not abstract)\\n"
+        "  judgment: why you decided as you did (not what you did)\\n"
+        "  structure: what direction this points to (not what action to take)\\n"
+        "  tags: list of short labels for retrieval (e.g. ['deletion', 'intent-gap'])\\n"
+        "  track: 'harness' for judgment accumulation, 'skill' for capability accumulation\\n\\n"
         "Update when: instructions stale/wrong, OS-specific failures, "
         "missing steps or pitfalls found during use. "
         "If you used a skill and hit issues not covered by it, patch it immediately.\n\n"
@@ -710,13 +1157,14 @@ SKILL_MANAGE_SCHEMA = {
         "properties": {
             "action": {
                 "type": "string",
-                "enum": ["create", "patch", "edit", "delete", "write_file", "remove_file"],
-                "description": "The action to perform."
+                "enum": ["create", "patch", "edit", "delete", "write_file", "remove_file", "record_triplet", "flag_triplet", "revoke_triplet", "generate_harness", "evolve_harness", "list_harnesses", "use_harness"],
+                "description": "The action to perform. 'record_triplet' writes a judgment triplet. 'flag_triplet' flags a triplet as potentially problematic. 'revoke_triplet' revokes a triplet entirely. 'generate_harness' creates a harness record. 'evolve_harness' evolves an existing harness to a new version. 'list_harnesses' lists harness records. 'use_harness' loads a harness for injection."
             },
             "name": {
                 "type": "string",
                 "description": (
                     "Skill name (lowercase, hyphens/underscores, max 64 chars). "
+                    "For 'generate_harness', this is the required human-readable harness title. "
                     "Must match an existing skill for patch/edit/delete/write_file/remove_file."
                 )
             },
@@ -725,7 +1173,10 @@ SKILL_MANAGE_SCHEMA = {
                 "description": (
                     "Full SKILL.md content (YAML frontmatter + markdown body). "
                     "Required for 'create' and 'edit'. For 'edit', read the skill "
-                    "first with skill_view() and provide the complete updated text."
+                    "first with skill_view() and provide the complete updated text. "
+                    "For 'generate_harness', provide JSON or labeled text with situation, "
+                    "judgment, and structure; optional root_paradigm_fragment, soul, "
+                    "api_config_name, tags, and evolution_direction."
                 )
             },
             "old_string": {
@@ -750,9 +1201,10 @@ SKILL_MANAGE_SCHEMA = {
             "category": {
                 "type": "string",
                 "description": (
-                    "Optional category/domain for organizing the skill (e.g., 'devops', "
-                    "'data-science', 'mlops'). Creates a subdirectory grouping. "
-                    "Only used with 'create'."
+                    "For 'create', optional category/domain for organizing the skill "
+                    "(e.g., 'devops', 'data-science', 'mlops'). Creates a subdirectory grouping. "
+                    "For 'generate_harness', this is the required human-readable harness category "
+                    "(e.g., '对话判断', '代码操作')."
                 )
             },
             "file_path": {
@@ -790,6 +1242,8 @@ registry.register(
         file_content=args.get("file_content"),
         old_string=args.get("old_string"),
         new_string=args.get("new_string"),
-        replace_all=args.get("replace_all", False)),
+        replace_all=args.get("replace_all", False),
+        task_id=kw.get("task_id", ""),
+        session_id=kw.get("session_id", "")),
     emoji="📝",
 )

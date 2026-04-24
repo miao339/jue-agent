@@ -636,8 +636,8 @@ class QQAdapter(BasePlatformAdapter):
                 "shard": [0, 1],
                 "properties": {
                     "$os": "macOS",
-                    "$browser": "hermes-agent",
-                    "$device": "hermes-agent",
+                    "$browser": "jue-agent",
+                    "$device": "jue-agent",
                 },
             },
         }
@@ -1626,7 +1626,7 @@ class QQAdapter(BasePlatformAdapter):
                                  or ("glm-asr" if provider in ("zai", "glm") else "whisper-1"),
                     }
 
-        # 2. QQ-specific env vars (set by `hermes setup gateway` / `hermes gateway`)
+        # 2. QQ-specific env vars (set by `jue setup gateway` / `jue gateway`)
         qq_stt_key = os.getenv("QQ_STT_API_KEY", "")
         if qq_stt_key:
             base_url = os.getenv(

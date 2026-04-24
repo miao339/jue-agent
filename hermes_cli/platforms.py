@@ -1,5 +1,5 @@
 """
-Shared platform registry for Hermes Agent.
+Shared platform registry for Jue Agent.
 
 Single source of truth for platform metadata consumed by both
 skills_config (label display) and tools_config (default toolset
@@ -19,25 +19,25 @@ class PlatformInfo(NamedTuple):
 
 # Ordered so that TUI menus are deterministic.
 PLATFORMS: OrderedDict[str, PlatformInfo] = OrderedDict([
-    ("cli",            PlatformInfo(label="🖥️  CLI",            default_toolset="hermes-cli")),
-    ("telegram",       PlatformInfo(label="📱 Telegram",        default_toolset="hermes-telegram")),
-    ("discord",        PlatformInfo(label="💬 Discord",         default_toolset="hermes-discord")),
-    ("slack",          PlatformInfo(label="💼 Slack",           default_toolset="hermes-slack")),
-    ("whatsapp",       PlatformInfo(label="📱 WhatsApp",        default_toolset="hermes-whatsapp")),
-    ("signal",         PlatformInfo(label="📡 Signal",          default_toolset="hermes-signal")),
-    ("bluebubbles",    PlatformInfo(label="💙 BlueBubbles",     default_toolset="hermes-bluebubbles")),
-    ("email",          PlatformInfo(label="📧 Email",           default_toolset="hermes-email")),
-    ("homeassistant",  PlatformInfo(label="🏠 Home Assistant",  default_toolset="hermes-homeassistant")),
-    ("mattermost",     PlatformInfo(label="💬 Mattermost",      default_toolset="hermes-mattermost")),
-    ("matrix",         PlatformInfo(label="💬 Matrix",          default_toolset="hermes-matrix")),
-    ("dingtalk",       PlatformInfo(label="💬 DingTalk",        default_toolset="hermes-dingtalk")),
-    ("feishu",         PlatformInfo(label="🪽 Feishu",          default_toolset="hermes-feishu")),
-    ("wecom",          PlatformInfo(label="💬 WeCom",           default_toolset="hermes-wecom")),
-    ("wecom_callback", PlatformInfo(label="💬 WeCom Callback",  default_toolset="hermes-wecom-callback")),
-    ("weixin",         PlatformInfo(label="💬 Weixin",          default_toolset="hermes-weixin")),
-    ("qqbot",          PlatformInfo(label="💬 QQBot",           default_toolset="hermes-qqbot")),
-    ("webhook",        PlatformInfo(label="🔗 Webhook",         default_toolset="hermes-webhook")),
-    ("api_server",     PlatformInfo(label="🌐 API Server",      default_toolset="hermes-api-server")),
+    ("cli",            PlatformInfo(label="🖥️  CLI",            default_toolset="jue-cli")),
+    ("telegram",       PlatformInfo(label="📱 Telegram",        default_toolset="jue-telegram")),
+    ("discord",        PlatformInfo(label="💬 Discord",         default_toolset="jue-discord")),
+    ("slack",          PlatformInfo(label="💼 Slack",           default_toolset="jue-slack")),
+    ("whatsapp",       PlatformInfo(label="📱 WhatsApp",        default_toolset="jue-whatsapp")),
+    ("signal",         PlatformInfo(label="📡 Signal",          default_toolset="jue-signal")),
+    ("bluebubbles",    PlatformInfo(label="💙 BlueBubbles",     default_toolset="jue-bluebubbles")),
+    ("email",          PlatformInfo(label="📧 Email",           default_toolset="jue-email")),
+    ("homeassistant",  PlatformInfo(label="🏠 Home Assistant",  default_toolset="jue-homeassistant")),
+    ("mattermost",     PlatformInfo(label="💬 Mattermost",      default_toolset="jue-mattermost")),
+    ("matrix",         PlatformInfo(label="💬 Matrix",          default_toolset="jue-matrix")),
+    ("dingtalk",       PlatformInfo(label="💬 DingTalk",        default_toolset="jue-dingtalk")),
+    ("feishu",         PlatformInfo(label="🪽 Feishu",          default_toolset="jue-feishu")),
+    ("wecom",          PlatformInfo(label="💬 WeCom",           default_toolset="jue-wecom")),
+    ("wecom_callback", PlatformInfo(label="💬 WeCom Callback",  default_toolset="jue-wecom-callback")),
+    ("weixin",         PlatformInfo(label="💬 Weixin",          default_toolset="jue-weixin")),
+    ("qqbot",          PlatformInfo(label="💬 QQBot",           default_toolset="jue-qqbot")),
+    ("webhook",        PlatformInfo(label="🔗 Webhook",         default_toolset="jue-webhook")),
+    ("api_server",     PlatformInfo(label="🌐 API Server",      default_toolset="jue-api-server")),
 ])
 
 

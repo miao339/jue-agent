@@ -45,11 +45,11 @@ export const zh: Translations = {
   },
 
   app: {
-    brand: "Hermes Agent",
+    brand: "Jue Agent",
     brandShort: "HA",
     webUi: "管理面板",
     footer: {
-      name: "Hermes Agent",
+      name: "Jue Agent",
       org: "Nous Research",
     },
     nav: {
@@ -92,8 +92,8 @@ export const zh: Translations = {
     starting: "启动中",
     startedInBackground: "已在后台启动 — 请查看日志",
     stopped: "已停止",
-    updateHermes: "更新 Hermes",
-    updatingHermes: "正在更新 Hermes…",
+    updateJue: "更新 Jue",
+    updatingJue: "正在更新 Jue…",
     waitingForOutput: "等待输出…",
   },
 
@@ -182,7 +182,7 @@ export const zh: Translations = {
     searchPlaceholder: "搜索技能和工具集...",
     enabledOf: "已启用 {enabled}/{total}",
     all: "全部",
-    noSkills: "未找到技能。技能从 ~/.hermes/skills/ 加载",
+    noSkills: "未找到技能。技能从 ~/.jue/skills/ 加载",
     noSkillsMatch: "没有匹配的技能。",
     skillCount: "{count} 个技能",
     resultCount: "{count} 个结果",
@@ -196,7 +196,7 @@ export const zh: Translations = {
   },
 
   config: {
-    configPath: "~/.hermes/config.yaml",
+    configPath: "~/.jue/config.yaml",
     exportConfig: "导出配置为 JSON",
     importConfig: "从 JSON 导入配置",
     resetDefaults: "恢复默认值",

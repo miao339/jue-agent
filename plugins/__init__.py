@@ -1,1 +1,1 @@
-# Hermes plugins package
+# Jue plugins package

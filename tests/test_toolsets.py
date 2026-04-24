@@ -197,14 +197,14 @@ class TestToolsetConsistency:
             for inc in ts["includes"]:
                 assert inc in TOOLSETS, f"{name} includes unknown toolset '{inc}'"
 
-    def test_hermes_platforms_share_core_tools(self):
-        """All hermes-* platform toolsets share the same core tools.
+    def test_jue_platforms_share_core_tools(self):
+        """All jue-* platform toolsets share the same core tools.
 
         Platform-specific additions (e.g. ``discord_server`` on
-        hermes-discord, gated on DISCORD_BOT_TOKEN) are allowed on top —
+        jue-discord, gated on DISCORD_BOT_TOKEN) are allowed on top —
         the invariant is that the core set is identical across platforms.
         """
-        platforms = ["hermes-cli", "hermes-telegram", "hermes-discord", "hermes-whatsapp", "hermes-slack", "hermes-signal", "hermes-homeassistant"]
+        platforms = ["jue-cli", "jue-telegram", "jue-discord", "jue-whatsapp", "jue-slack", "jue-signal", "jue-homeassistant"]
         tool_sets = [set(TOOLSETS[p]["tools"]) for p in platforms]
         # All platforms must contain the shared core; platform-specific
         # extras are OK (subset check, not equality).

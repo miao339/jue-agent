@@ -16,12 +16,12 @@ hermes memory setup    # select "mem0"
 Or manually:
 ```bash
 hermes config set memory.provider mem0
-echo "MEM0_API_KEY=your-key" >> ~/.hermes/.env
+echo "MEM0_API_KEY=your-key" >> ~/.jue/.env
 ```
 
 ## Config
 
-Config file: `$HERMES_HOME/mem0.json`
+Config file: `$JUE_HOME/mem0.json`
 
 | Key | Default | Description |
 |-----|---------|-------------|

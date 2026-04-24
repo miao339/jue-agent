@@ -1,4 +1,4 @@
-import { type ScrollBoxHandle, useApp, useHasSelection, useSelection, useStdout, useTerminalTitle } from '@hermes/ink'
+import { type ScrollBoxHandle, useApp, useHasSelection, useSelection, useStdout, useTerminalTitle } from '@jue/ink'
 import { useStore } from '@nanostores/react'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 
@@ -315,10 +315,10 @@ export function useMainApp(gw: GatewayClient) {
   useConfigSync({ gw, setBellOnComplete, setVoiceEnabled, sid: ui.sid })
 
   // ── Terminal tab title ─────────────────────────────────────────────
-  // Show model name + status so users can identify the Hermes tab.
+  // Show model name + status so users can identify the Jue tab.
   const shortModel = ui.info?.model?.replace(/^.*\//, '') ?? ''
   const titleStatus = ui.busy ? '⏳' : '✓'
-  const terminalTitle = shortModel ? `${titleStatus} ${shortModel} — Hermes` : 'Hermes'
+  const terminalTitle = shortModel ? `${titleStatus} ${shortModel} — Jue` : 'Jue'
   useTerminalTitle(terminalTitle)
 
   useEffect(() => {
@@ -661,7 +661,7 @@ export function useMainApp(gw: GatewayClient) {
     [turn, showProgressArea]
   )
 
-  const cwd = ui.info?.cwd || process.env.HERMES_CWD || process.cwd()
+  const cwd = ui.info?.cwd || process.env.JUE_CWD || process.cwd()
   const gitBranch = useGitBranch(cwd)
 
   const appStatus = useMemo(

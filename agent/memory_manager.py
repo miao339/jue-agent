@@ -312,10 +312,20 @@ class MemoryManager:
                 )
         return "\n\n".join(parts)
 
-    def on_memory_write(self, action: str, target: str, content: str) -> None:
+    def on_memory_write(
+        self,
+        action: str,
+        target: str,
+        content: str,
+        *,
+        task_id: str = "",
+        session_id: str = "",
+    ) -> None:
         """Notify external providers when the built-in memory tool writes.
 
         Skips the builtin provider itself (it's the source of the write).
+        Harness③ triplets for memory boundaries are recorded from successful
+        tool-call observations at turn end, not from every low-level write path.
         """
         for provider in self._providers:
             if provider.name == "builtin":
@@ -356,13 +366,13 @@ class MemoryManager:
     def initialize_all(self, session_id: str, **kwargs) -> None:
         """Initialize all providers.
 
-        Automatically injects ``hermes_home`` into *kwargs* so that every
+        Automatically injects ``jue_home`` into *kwargs* so that every
         provider can resolve profile-scoped storage paths without importing
-        ``get_hermes_home()`` themselves.
+        ``get_jue_home()`` themselves.
         """
-        if "hermes_home" not in kwargs:
-            from hermes_constants import get_hermes_home
-            kwargs["hermes_home"] = str(get_hermes_home())
+        if "jue_home" not in kwargs:
+            from jue_constants import get_jue_home
+            kwargs["jue_home"] = str(get_jue_home())
         for provider in self._providers:
             try:
                 provider.initialize(session_id=session_id, **kwargs)

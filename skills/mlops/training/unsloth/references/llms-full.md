@@ -1286,9 +1286,9 @@ Python 3.13 now works with Unsloth!
 
 {% stepper %}
 {% step %}
-**Install NVIDIA Video Driver**
+**Install NVIDIA Video Djue**
 
-You should install the latest version of your GPUs driver. Download drivers here: [NVIDIA GPU Drive](https://www.nvidia.com/Download/index.aspx)
+You should install the latest version of your GPUs djue. Download djues here: [NVIDIA GPU Drive](https://www.nvidia.com/Download/index.aspx)
 {% endstep %}
 
 {% step %}
@@ -1349,7 +1349,7 @@ Then install Miniconda (which has Python) here: [https://www.anaconda.com/docs/g
 {% step %}
 **Install PyTorch**
 
-You will need the correct version of PyTorch that is compatible with your CUDA drivers, so make sure to select them carefully. [Install PyTorch](https://pytorch.org/get-started/locally/)
+You will need the correct version of PyTorch that is compatible with your CUDA djues, so make sure to select them carefully. [Install PyTorch](https://pytorch.org/get-started/locally/)
 {% endstep %}
 
 {% step %}
@@ -1387,7 +1387,7 @@ trainer = SFTTrainer(
 For **advanced installation instructions** or if you see weird errors during installations:
 
 1. Install `torch` and `triton`. Go to <https://pytorch.org> to install it. For example `pip install torch torchvision torchaudio triton`
-2. Confirm if CUDA is installed correctly. Try `nvcc`. If that fails, you need to install `cudatoolkit` or CUDA drivers.
+2. Confirm if CUDA is installed correctly. Try `nvcc`. If that fails, you need to install `cudatoolkit` or CUDA djues.
 3. Install `xformers` manually. You can try installing `vllm` and seeing if `vllm` succeeds. Check if `xformers` succeeded with `python -m xformers.info` Go to <https://github.com/facebookresearch/xformers>. Another option is to install `flash-attn` for Ampere GPUs.
 4. Double check that your versions of Python, CUDA, CUDNN, `torch`, `triton`, and `xformers` are compatible with one another. The [PyTorch Compatibility Matrix](https://github.com/pytorch/pytorch/blob/main/RELEASE.md#release-compatibility-matrix) may be useful.
 5. Finally, install `bitsandbytes` and check it with `python -m bitsandbytes`
@@ -2555,8 +2555,8 @@ While every task is different, the following configuration provides a great star
 
 | Parameter                                                 | Description                                                                                                                                                                                                                                                                     | Recommended Setting                             |
 | --------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------- |
-| **Batch Size** (`batch_size`)                             | <p>The number of samples processed in a single forward/backward pass on one GPU. <br><br><strong>Primary Driver of VRAM Usage</strong>. Higher values can improve hardware utilization and speed up training, but only if they fit in memory.</p>                               | 2                                               |
-| **Gradient Accumulation** (`gradient_accumulation_steps`) | <p>The number of micro-batches to process before performing a single model weight update.<br><br><strong>Primary Driver of Training Time.</strong> Allows simulation of a larger <code>batch\_size</code> to conserve VRAM. Higher values increase training time per epoch.</p> | 8                                               |
+| **Batch Size** (`batch_size`)                             | <p>The number of samples processed in a single forward/backward pass on one GPU. <br><br><strong>Primary Djue of VRAM Usage</strong>. Higher values can improve hardware utilization and speed up training, but only if they fit in memory.</p>                               | 2                                               |
+| **Gradient Accumulation** (`gradient_accumulation_steps`) | <p>The number of micro-batches to process before performing a single model weight update.<br><br><strong>Primary Djue of Training Time.</strong> Allows simulation of a larger <code>batch\_size</code> to conserve VRAM. Higher values increase training time per epoch.</p> | 8                                               |
 | **Effective Batch Size** (Calculated)                     | The true batch size used for each gradient update. It directly influences training stability, quality, and final model performance.                                                                                                                                             | <p>4 to 16<br>Recommended: 16 (from 2 \* 8)</p> |
 
 ### The VRAM & Performance Trade-off
@@ -4998,7 +4998,7 @@ This was [reported](https://github.com/QwenLM/Qwen2.5-VL/issues/759) as well in 
 {% code overflow="wrap" %}
 
 ```
-Figure is an overhead view of the path taken by a race car driver as his car collides with the racetrack wall. Just before the collision, he is traveling at speed $v_i=70 \mathrm{~m} / \mathrm{s}$ along a straight line at $30^{\circ}$ from the wall. Just after the collision, he is traveling at speed $v_f=50 \mathrm{~m} / \mathrm{s}$ along a straight line at $10^{\circ}$ from the wall. His mass $m$ is $80 \mathrm{~kg}$. The collision lasts for $14 \mathrm{~ms}$. What is the magnitude of the average force on the driver during the collision?
+Figure is an overhead view of the path taken by a race car djue as his car collides with the racetrack wall. Just before the collision, he is traveling at speed $v_i=70 \mathrm{~m} / \mathrm{s}$ along a straight line at $30^{\circ}$ from the wall. Just after the collision, he is traveling at speed $v_f=50 \mathrm{~m} / \mathrm{s}$ along a straight line at $10^{\circ}$ from the wall. His mass $m$ is $80 \mathrm{~kg}$. The collision lasts for $14 \mathrm{~ms}$. What is the magnitude of the average force on the djue during the collision?
 ```
 
 {% endcode %}

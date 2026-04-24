@@ -20,7 +20,7 @@ def test_list_authenticated_providers_includes_full_models_list_from_user_provid
     Regression test: previously only default_model was shown in /model picker.
     """
     monkeypatch.setattr("agent.models_dev.fetch_models_dev", lambda: {})
-    monkeypatch.setattr("hermes_cli.providers.HERMES_OVERLAYS", {})
+    monkeypatch.setattr("hermes_cli.providers.JUE_OVERLAYS", {})
     
     user_providers = {
         "local-ollama": {
@@ -60,7 +60,7 @@ def test_list_authenticated_providers_includes_full_models_list_from_user_provid
 def test_list_authenticated_providers_dedupes_models_when_default_in_list(monkeypatch):
     """When default_model is also in models list, don't duplicate."""
     monkeypatch.setattr("agent.models_dev.fetch_models_dev", lambda: {})
-    monkeypatch.setattr("hermes_cli.providers.HERMES_OVERLAYS", {})
+    monkeypatch.setattr("hermes_cli.providers.JUE_OVERLAYS", {})
     
     user_providers = {
         "my-provider": {
@@ -88,14 +88,14 @@ def test_list_authenticated_providers_dedupes_models_when_default_in_list(monkey
 
 def test_list_authenticated_providers_enumerates_dict_format_models(monkeypatch):
     """providers: dict entries with ``models:`` as a dict keyed by model id
-    (canonical Hermes write format) should surface every key in the picker.
+    (canonical Jue write format) should surface every key in the picker.
 
     Regression: the ``providers:`` dict path previously only accepted
     list-format ``models:`` and silently dropped dict-format entries,
-    even though Hermes's own writer and downstream readers use dict format.
+    even though Jue's own writer and downstream readers use dict format.
     """
     monkeypatch.setattr("agent.models_dev.fetch_models_dev", lambda: {})
-    monkeypatch.setattr("hermes_cli.providers.HERMES_OVERLAYS", {})
+    monkeypatch.setattr("hermes_cli.providers.JUE_OVERLAYS", {})
 
     user_providers = {
         "local-ollama": {
@@ -135,7 +135,7 @@ def test_list_authenticated_providers_dict_models_without_default_model(monkeypa
     """Dict-format ``models:`` without a ``default_model`` must still expose
     every dict key, not collapse to an empty list."""
     monkeypatch.setattr("agent.models_dev.fetch_models_dev", lambda: {})
-    monkeypatch.setattr("hermes_cli.providers.HERMES_OVERLAYS", {})
+    monkeypatch.setattr("hermes_cli.providers.JUE_OVERLAYS", {})
 
     user_providers = {
         "multimodel": {
@@ -167,7 +167,7 @@ def test_list_authenticated_providers_dict_models_dedupe_with_default(monkeypatc
     """When ``default_model`` is also a key in the ``models:`` dict, it must
     appear exactly once (list already had this for list-format models)."""
     monkeypatch.setattr("agent.models_dev.fetch_models_dev", lambda: {})
-    monkeypatch.setattr("hermes_cli.providers.HERMES_OVERLAYS", {})
+    monkeypatch.setattr("hermes_cli.providers.JUE_OVERLAYS", {})
 
     user_providers = {
         "my-provider": {
@@ -200,7 +200,7 @@ def test_list_authenticated_providers_dict_models_dedupe_with_default(monkeypatc
 def test_list_authenticated_providers_fallback_to_default_only(monkeypatch):
     """When no models array is provided, should fall back to default_model."""
     monkeypatch.setattr("agent.models_dev.fetch_models_dev", lambda: {})
-    monkeypatch.setattr("hermes_cli.providers.HERMES_OVERLAYS", {})
+    monkeypatch.setattr("hermes_cli.providers.JUE_OVERLAYS", {})
     
     user_providers = {
         "simple-provider": {
@@ -228,16 +228,16 @@ def test_list_authenticated_providers_fallback_to_default_only(monkeypatch):
 
 
 def test_list_authenticated_providers_accepts_base_url_and_singular_model(monkeypatch):
-    """providers: dict entries written in canonical Hermes shape
+    """providers: dict entries written in canonical Jue shape
     (``base_url`` + singular ``model``) should resolve the same as the
     legacy ``api`` + ``default_model`` shape.
 
     Regression: section 3 previously only read ``api``/``url`` and
-    ``default_model``, so new-shape entries written by Hermes's own writer
+    ``default_model``, so new-shape entries written by Jue's own writer
     surfaced with empty ``api_url`` and no default.
     """
     monkeypatch.setattr("agent.models_dev.fetch_models_dev", lambda: {})
-    monkeypatch.setattr("hermes_cli.providers.HERMES_OVERLAYS", {})
+    monkeypatch.setattr("hermes_cli.providers.JUE_OVERLAYS", {})
 
     user_providers = {
         "custom": {
@@ -274,7 +274,7 @@ def test_list_authenticated_providers_dedupes_when_user_and_custom_overlap(monke
     overlapping entries produced two picker rows for the same provider.
     """
     monkeypatch.setattr("agent.models_dev.fetch_models_dev", lambda: {})
-    monkeypatch.setattr("hermes_cli.providers.HERMES_OVERLAYS", {})
+    monkeypatch.setattr("hermes_cli.providers.JUE_OVERLAYS", {})
 
     providers = list_authenticated_providers(
         current_provider="custom",
@@ -314,7 +314,7 @@ def test_list_authenticated_providers_no_duplicate_labels_across_schemas(monkeyp
     identically, bypassing ``seen_slugs`` dedup because the slug shapes differ.
     """
     monkeypatch.setattr("agent.models_dev.fetch_models_dev", lambda: {})
-    monkeypatch.setattr("hermes_cli.providers.HERMES_OVERLAYS", {})
+    monkeypatch.setattr("hermes_cli.providers.JUE_OVERLAYS", {})
 
     shared_entries = [
         ("endpoint-a", "http://a.local/v1"),
@@ -372,7 +372,7 @@ def test_get_named_custom_provider_finds_user_providers_by_key(monkeypatch, tmp_
     config_file = tmp_path / "config.yaml"
     config_file.write_text(yaml.dump(config))
     
-    monkeypatch.setenv("HERMES_HOME", str(tmp_path))
+    monkeypatch.setenv("JUE_HOME", str(tmp_path))
     
     result = rp._get_named_custom_provider("local-localhost:11434")
     
@@ -397,7 +397,7 @@ def test_get_named_custom_provider_finds_by_display_name(monkeypatch, tmp_path):
     config_file = tmp_path / "config.yaml"
     config_file.write_text(yaml.dump(config))
     
-    monkeypatch.setenv("HERMES_HOME", str(tmp_path))
+    monkeypatch.setenv("JUE_HOME", str(tmp_path))
     
     # Should find by display name (normalized)
     result = rp._get_named_custom_provider("my-production-ollama")
@@ -422,7 +422,7 @@ def test_get_named_custom_provider_falls_back_to_legacy_format(monkeypatch, tmp_
     config_file = tmp_path / "config.yaml"
     config_file.write_text(yaml.dump(config))
     
-    monkeypatch.setenv("HERMES_HOME", str(tmp_path))
+    monkeypatch.setenv("JUE_HOME", str(tmp_path))
     
     result = rp._get_named_custom_provider("custom-endpoint")
     
@@ -443,7 +443,7 @@ def test_get_named_custom_provider_returns_none_for_unknown(monkeypatch, tmp_pat
     config_file = tmp_path / "config.yaml"
     config_file.write_text(yaml.dump(config))
     
-    monkeypatch.setenv("HERMES_HOME", str(tmp_path))
+    monkeypatch.setenv("JUE_HOME", str(tmp_path))
     
     result = rp._get_named_custom_provider("other-provider")
     
@@ -468,7 +468,7 @@ def test_get_named_custom_provider_skips_empty_base_url(monkeypatch, tmp_path):
     config_file = tmp_path / "config.yaml"
     config_file.write_text(yaml.dump(config))
     
-    monkeypatch.setenv("HERMES_HOME", str(tmp_path))
+    monkeypatch.setenv("JUE_HOME", str(tmp_path))
     
     result = rp._get_named_custom_provider("incomplete-provider")
     
@@ -495,7 +495,7 @@ def test_switch_model_resolves_user_provider_credentials(monkeypatch, tmp_path):
     
     config_file = tmp_path / "config.yaml"
     config_file.write_text(yaml.dump(config))
-    monkeypatch.setenv("HERMES_HOME", str(tmp_path))
+    monkeypatch.setenv("JUE_HOME", str(tmp_path))
     
     # Mock validation to pass
     monkeypatch.setattr(

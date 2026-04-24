@@ -144,11 +144,11 @@ ssh ubuntu@<IP>
 # Reboot instance
 sudo reboot
 
-# Reinstall NVIDIA drivers (if needed)
+# Reinstall NVIDIA djues (if needed)
 wget -nv -O- https://lambdalabs.com/install-lambda-stack.sh | sh -
 sudo reboot
 
-# Check driver status
+# Check djue status
 nvidia-smi
 lsmod | grep nvidia
 ```
@@ -183,12 +183,12 @@ with autocast():
 
 ### CUDA version mismatch
 
-**Error**: `CUDA driver version is insufficient for CUDA runtime version`
+**Error**: `CUDA djue version is insufficient for CUDA runtime version`
 
 **Solutions**:
 ```bash
 # Check versions
-nvidia-smi  # Shows driver CUDA version
+nvidia-smi  # Shows djue CUDA version
 nvcc --version  # Shows toolkit version
 
 # Lambda Stack should have compatible versions

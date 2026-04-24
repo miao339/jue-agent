@@ -205,9 +205,9 @@ class TestMacosOsascript:
 
 class TestIsWsl:
     def setup_method(self):
-        # _is_wsl is now hermes_constants.is_wsl — reset its cache
-        import hermes_constants
-        hermes_constants._wsl_detected = None
+        # _is_wsl is now jue_constants.is_wsl — reset its cache
+        import jue_constants
+        jue_constants._wsl_detected = None
 
     def test_wsl2_detected(self):
         content = "Linux version 5.15.0 (microsoft-standard-WSL2)"
@@ -229,7 +229,7 @@ class TestIsWsl:
             assert _is_wsl() is False
 
     def test_result_is_cached(self):
-        import hermes_constants
+        import jue_constants
         content = "Linux version 5.15.0 (microsoft-standard-WSL2)"
         with patch("builtins.open", mock_open(read_data=content)) as m:
             assert _is_wsl() is True
@@ -819,7 +819,7 @@ class TestPreprocessImagesWithVision:
 
     @pytest.fixture
     def cli(self):
-        """Minimal HermesCLI with mocked internals."""
+        """Minimal JueCLI with mocked internals."""
         with patch("cli.load_cli_config") as mock_cfg:
             mock_cfg.return_value = {
                 "model": {"default": "test/model", "base_url": "http://x", "provider": "auto"},
@@ -834,8 +834,8 @@ class TestPreprocessImagesWithVision:
             }
             with patch.dict("os.environ", {"OPENROUTER_API_KEY": "test-key"}):
                 with patch("cli.CLI_CONFIG", mock_cfg.return_value):
-                    from cli import HermesCLI
-                    cli_obj = HermesCLI.__new__(HermesCLI)
+                    from cli import JueCLI
+                    cli_obj = JueCLI.__new__(JueCLI)
                     # Manually init just enough state
                     cli_obj._attached_images = []
                     cli_obj._image_counter = 0
@@ -932,8 +932,8 @@ class TestTryAttachClipboardImage:
 
     @pytest.fixture
     def cli(self):
-        from cli import HermesCLI
-        cli_obj = HermesCLI.__new__(HermesCLI)
+        from cli import JueCLI
+        cli_obj = JueCLI.__new__(JueCLI)
         cli_obj._attached_images = []
         cli_obj._image_counter = 0
         return cli_obj
@@ -973,7 +973,7 @@ class TestTryAttachClipboardImage:
         with patch("hermes_cli.clipboard.save_clipboard_image", return_value=True):
             cli._try_attach_clipboard_image()
         path = cli._attached_images[0]
-        assert path.parent == Path(os.environ["HERMES_HOME"]) / "images"
+        assert path.parent == Path(os.environ["JUE_HOME"]) / "images"
         assert path.name.startswith("clip_")
         assert path.suffix == ".png"
 
@@ -995,8 +995,8 @@ class TestAutoAttachClipboardImageOnPaste:
 class TestVoiceSubmission:
     @pytest.fixture
     def cli(self):
-        from cli import HermesCLI
-        cli_obj = HermesCLI.__new__(HermesCLI)
+        from cli import JueCLI
+        cli_obj = JueCLI.__new__(JueCLI)
         cli_obj._attached_images = [Path("/tmp/stale.png")]
         cli_obj._pending_input = queue.Queue()
         cli_obj._voice_lock = MagicMock()

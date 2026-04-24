@@ -1,5 +1,5 @@
 import { LONG_MSG } from '../config/limits.js'
-import { buildToolTrailLine, fmtK } from '../lib/text.js'
+import { fmtK } from '../lib/text.js'
 import type { Msg, SessionInfo } from '../types.js'
 
 export const introMsg = (info: SessionInfo): Msg => ({ info, kind: 'intro', role: 'system', text: '' })
@@ -37,7 +37,23 @@ export const toTranscriptMessages = (rows: unknown): Msg[] => {
   }
 
   const out: Msg[] = []
-  let pending: string[] = []
+  let pendingTools: string[] = []
+
+  const flushTools = () => {
+    if (!pendingTools.length) {
+      return
+    }
+
+    const unique = [...new Set(pendingTools)]
+    const names = unique.slice(0, 4).join(', ')
+    const more = unique.length > 4 ? `, +${unique.length - 4}` : ''
+
+    out.push({
+      role: 'assistant',
+      text: `[${pendingTools.length} tool call${pendingTools.length === 1 ? '' : 's'}: ${names}${more}]`
+    })
+    pendingTools = []
+  }
 
   for (const row of rows) {
     if (!row || typeof row !== 'object') {
@@ -47,7 +63,7 @@ export const toTranscriptMessages = (rows: unknown): Msg[] => {
     const { context, name, role, text } = row as TranscriptRow
 
     if (role === 'tool') {
-      pending.push(buildToolTrailLine(name ?? 'tool', context ?? ''))
+      pendingTools.push(name ?? 'tool')
 
       continue
     }
@@ -57,15 +73,23 @@ export const toTranscriptMessages = (rows: unknown): Msg[] => {
     }
 
     if (role === 'assistant') {
-      out.push({ role, text, ...(pending.length && { tools: pending }) })
-      pending = []
+      flushTools()
+      out.push({ role, text: firstAssistantLines(text, 2) })
     } else if (role === 'user' || role === 'system') {
+      flushTools()
       out.push({ role, text })
-      pending = []
     }
   }
 
+  flushTools()
+
   return out
+}
+
+const firstAssistantLines = (text: string, maxLines: number) => {
+  const lines = text.split('\n')
+
+  return lines.length <= maxLines ? text : `${lines.slice(0, maxLines).join('\n')}...`
 }
 
 export const fmtDuration = (ms: number) => {

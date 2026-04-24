@@ -1,24 +1,24 @@
 ---
-name: hermes-atropos-environments
-description: Build, test, and debug Hermes Agent RL environments for Atropos training. Covers the HermesAgentBaseEnv interface, reward functions, agent loop integration, evaluation with tools, wandb logging, and the three CLI modes (serve/process/evaluate). Use when creating, reviewing, or fixing RL environments in the hermes-agent repo.
+name: jue-atropos-environments
+description: Build, test, and debug Jue Agent RL environments for Atropos training. Covers the JueAgentBaseEnv interface, reward functions, agent loop integration, evaluation with tools, wandb logging, and the three CLI modes (serve/process/evaluate). Use when creating, reviewing, or fixing RL environments in the jue-agent repo.
 version: 1.1.0
-author: Hermes Agent
+author: Jue Agent
 license: MIT
 metadata:
-  hermes:
+  jue:
     tags: [atropos, rl, environments, training, reinforcement-learning, reward-functions]
     related_skills: [axolotl, fine-tuning-with-trl, lm-evaluation-harness]
 ---
 
-# Hermes Agent Atropos Environments
+# Jue Agent Atropos Environments
 
-Guide for building RL environments in the hermes-agent repo that integrate with the Atropos training framework.
+Guide for building RL environments in the jue-agent repo that integrate with the Atropos training framework.
 
 ## Architecture Overview
 
 ```
 Atropos BaseEnv (atroposlib/envs/base.py)
-    └── HermesAgentBaseEnv (environments/hermes_base_env.py)
+    └── JueAgentBaseEnv (environments/jue_base_env.py)
             ├── Handles agent loop orchestration
             ├── Handles tool resolution per group
             ├── Handles ToolContext for reward verification
@@ -27,16 +27,16 @@ Atropos BaseEnv (atroposlib/envs/base.py)
                                     compute_reward, evaluate, wandb_log
 ```
 
-Hermes environments are special because they run a **multi-turn agent loop with tool calling** — not just single-turn completions. The base env handles the loop; you implement the task and scoring.
+Jue environments are special because they run a **multi-turn agent loop with tool calling** — not just single-turn completions. The base env handles the loop; you implement the task and scoring.
 
 ## File Locations
 
 | File | Purpose |
 |------|---------|
-| `environments/hermes_base_env.py` | Base class with agent loop + tool resolution |
-| `environments/agent_loop.py` | `HermesAgentLoop` + `AgentResult` dataclass |
+| `environments/jue_base_env.py` | Base class with agent loop + tool resolution |
+| `environments/agent_loop.py` | `JueAgentLoop` + `AgentResult` dataclass |
 | `environments/tool_context.py` | `ToolContext` for reward verification |
-| `environments/tool_call_parsers.py` | Phase 2 tool call parsers (hermes, mistral, etc.) |
+| `environments/tool_call_parsers.py` | Phase 2 tool call parsers (jue, mistral, etc.) |
 | `environments/your_env.py` | Your environment implementation |
 
 ## Inference Setup — Ask the User First
@@ -146,12 +146,12 @@ return 1.0 if result["exit_code"] == 0 else 0.0
 ### 5. `evaluate()` — Periodic evaluation with full agent loop
 
 **MUST use the full agent loop with tools**, not single-turn chat_completion.
-The whole point of hermes-agent environments is agentic evaluation:
+The whole point of jue-agent environments is agentic evaluation:
 
 ```python
 async def evaluate(self, *args, **kwargs) -> None:
     import time, uuid
-    from environments.agent_loop import HermesAgentLoop
+    from environments.agent_loop import JueAgentLoop
     from environments.tool_context import ToolContext
 
     start_time = time.time()
@@ -165,7 +165,7 @@ async def evaluate(self, *args, **kwargs) -> None:
             messages.append({"role": "system", "content": self.config.system_prompt})
         messages.append({"role": "user", "content": self.format_prompt(item)})
 
-        agent = HermesAgentLoop(
+        agent = JueAgentLoop(
             server=self.server,
             tool_schemas=tools,
             valid_tool_names=valid_names,
@@ -242,7 +242,7 @@ Config priority: CLI args > YAML file > config_init() defaults.
 
 1. **AgentResult has .messages, not .final_response** — Extract the final response by iterating reversed(result.messages) looking for the last assistant message with content.
 
-2. **evaluate() must use HermesAgentLoop, not chat_completion** — Single-turn chat_completion has no tools. The whole point of hermes-agent benchmarks is agentic evaluation with tool use.
+2. **evaluate() must use JueAgentLoop, not chat_completion** — Single-turn chat_completion has no tools. The whole point of jue-agent benchmarks is agentic evaluation with tool use.
 
 3. **Don't call _llm_judge twice** — If compute_reward already calls it, extract the score from the buffer instead of calling judge separately in evaluate().
 
@@ -284,7 +284,7 @@ Weight correctness (0.6) + tool usage (0.2) + efficiency (0.2) + optional bonuse
 ## Minimum Implementation Checklist
 
 ```python
-class MyEnv(HermesAgentBaseEnv):
+class MyEnv(JueAgentBaseEnv):
     name = "my-env"
     env_config_cls = MyEnvConfig
 

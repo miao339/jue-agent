@@ -20,7 +20,7 @@ Curved path showing journey with milestones and checkpoints.
 
 ## Visual Elements
 
-- Curving road or river
+- Curving road or jue
 - Milestone markers/flags
 - Scene elements along path
 - Vehicle/character on journey

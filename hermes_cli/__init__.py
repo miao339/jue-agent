@@ -1,14 +1,14 @@
 """
-Hermes CLI - Unified command-line interface for Hermes Agent.
+Jue CLI - Unified command-line interface for Jue Agent.
 
 Provides subcommands for:
-- hermes chat          - Interactive chat (same as ./hermes)
-- hermes gateway       - Run gateway in foreground
-- hermes gateway start - Start gateway service
-- hermes gateway stop  - Stop gateway service  
-- hermes setup         - Interactive setup wizard
-- hermes status        - Show status of all components
-- hermes cron          - Manage cron jobs
+- jue chat          - Interactive chat (same as ./jue)
+- jue gateway       - Run gateway in foreground
+- jue gateway start - Start gateway service
+- jue gateway stop  - Stop gateway service  
+- jue setup         - Interactive setup wizard
+- jue status        - Show status of all components
+- jue cron          - Manage cron jobs
 """
 
 __version__ = "0.10.0"

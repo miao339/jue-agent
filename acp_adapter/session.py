@@ -1,6 +1,6 @@
-"""ACP session manager — maps ACP sessions to Hermes AIAgent instances.
+"""ACP session manager — maps ACP sessions to Jue AIAgent instances.
 
-Sessions are persisted to the shared SessionDB (``~/.hermes/state.db``) so they
+Sessions are persisted to the shared SessionDB (``~/.jue/state.db``) so they
 survive process restarts and appear in ``session_search``.  When the editor
 reconnects after idle/restart, the ``load_session`` / ``resume_session`` calls
 find the persisted session in the database and restore the full conversation
@@ -8,7 +8,7 @@ history.
 """
 from __future__ import annotations
 
-from hermes_constants import get_hermes_home
+from jue_constants import get_jue_home
 
 import copy
 import json
@@ -119,18 +119,19 @@ def _clear_task_cwd(task_id: str) -> None:
 
 @dataclass
 class SessionState:
-    """Tracks per-session state for an ACP-managed Hermes agent."""
+    """Tracks per-session state for an ACP-managed Jue agent."""
 
     session_id: str
     agent: Any  # AIAgent instance
     cwd: str = "."
     model: str = ""
     history: List[Dict[str, Any]] = field(default_factory=list)
+    active_harness_id: str = ""
     cancel_event: Any = None  # threading.Event
 
 
 class SessionManager:
-    """Thread-safe manager for ACP sessions backed by Hermes AIAgent instances.
+    """Thread-safe manager for ACP sessions backed by Jue AIAgent instances.
 
     Sessions are held in-memory for fast access **and** persisted to the
     shared SessionDB so they survive process restarts and are searchable
@@ -142,9 +143,9 @@ class SessionManager:
         Args:
             agent_factory: Optional callable that creates an AIAgent-like object.
                            Used by tests. When omitted, a real AIAgent is created
-                           using the current Hermes runtime provider configuration.
+                           using the current Jue runtime provider configuration.
             db:            Optional SessionDB instance. When omitted, the default
-                           SessionDB (``~/.hermes/state.db``) is lazily created.
+                           SessionDB (``~/.jue/state.db``) is lazily created.
         """
         self._sessions: Dict[str, SessionState] = {}
         self._lock = Lock()
@@ -164,6 +165,7 @@ class SessionManager:
             agent=agent,
             cwd=cwd,
             model=getattr(agent, "model", "") or "",
+            active_harness_id=getattr(agent, "_active_harness_id", "") or "",
             cancel_event=threading.Event(),
         )
         with self._lock:
@@ -215,8 +217,11 @@ class SessionManager:
             cwd=cwd,
             model=getattr(agent, "model", original.model) or original.model,
             history=copy.deepcopy(original.history),
+            active_harness_id=getattr(original.agent, "_active_harness_id", "") or original.active_harness_id or "",
             cancel_event=threading.Event(),
         )
+        if state.active_harness_id:
+            setattr(agent, "_active_harness_id", state.active_harness_id)
         with self._lock:
             self._sessions[new_id] = state
         _register_task_cwd(new_id, cwd)
@@ -347,17 +352,17 @@ class SessionManager:
         Returns ``None`` if the DB is unavailable (e.g. import error in a
         minimal test environment).
 
-        Note: we resolve ``HERMES_HOME`` dynamically rather than relying on
+        Note: we resolve ``JUE_HOME`` dynamically rather than relying on
         the module-level ``DEFAULT_DB_PATH`` constant, because that constant
         is evaluated at import time and won't reflect env-var changes made
-        later (e.g. by the test fixture ``_isolate_hermes_home``).
+        later (e.g. by the test fixture ``_isolate_jue_home``).
         """
         if self._db_instance is not None:
             return self._db_instance
         try:
-            from hermes_state import SessionDB
-            hermes_home = get_hermes_home()
-            self._db_instance = SessionDB(db_path=hermes_home / "state.db")
+            from jue_state import SessionDB
+            jue_home = get_jue_home()
+            self._db_instance = SessionDB(db_path=jue_home / "state.db")
             return self._db_instance
         except Exception:
             logger.debug("SessionDB unavailable for ACP persistence", exc_info=True)
@@ -376,6 +381,9 @@ class SessionManager:
         # Ensure model is a plain string (not a MagicMock or other proxy).
         model_str = str(state.model) if state.model else None
         session_meta = {"cwd": state.cwd}
+        active_harness_id = getattr(state.agent, "_active_harness_id", "") or state.active_harness_id or ""
+        if active_harness_id:
+            session_meta["active_harness_id"] = active_harness_id
         provider = getattr(state.agent, "provider", None)
         base_url = getattr(state.agent, "base_url", None)
         api_mode = getattr(state.agent, "api_mode", None)
@@ -449,12 +457,14 @@ class SessionManager:
         requested_provider = row.get("billing_provider")
         restored_base_url = row.get("billing_base_url")
         restored_api_mode = None
+        active_harness_id = ""
         mc = row.get("model_config")
         if mc:
             try:
                 meta = json.loads(mc)
                 if isinstance(meta, dict):
                     cwd = meta.get("cwd", ".")
+                    active_harness_id = meta.get("active_harness_id", "") or ""
                     requested_provider = meta.get("provider") or requested_provider
                     restored_base_url = meta.get("base_url") or restored_base_url
                     restored_api_mode = meta.get("api_mode") or restored_api_mode
@@ -489,8 +499,11 @@ class SessionManager:
             cwd=cwd,
             model=model or getattr(agent, "model", "") or "",
             history=history,
+            active_harness_id=active_harness_id,
             cancel_event=threading.Event(),
         )
+        if active_harness_id:
+            setattr(agent, "_active_harness_id", active_harness_id)
         with self._lock:
             self._sessions[session_id] = state
         _register_task_cwd(session_id, cwd)
@@ -539,7 +552,7 @@ class SessionManager:
 
         kwargs = {
             "platform": "acp",
-            "enabled_toolsets": ["hermes-acp"],
+            "enabled_toolsets": ["jue-acp"],
             "quiet_mode": True,
             "session_id": session_id,
             "model": model or default_model,

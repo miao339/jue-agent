@@ -1,20 +1,20 @@
-"""``hermes logs`` — view and filter Hermes log files.
+"""``jue logs`` — view and filter Jue log files.
 
 Supports tailing, following, session filtering, level filtering,
 component filtering, and relative time ranges.  All log files live
-under ``~/.hermes/logs/``.
+under ``~/.jue/logs/``.
 
 Usage examples::
 
-    hermes logs                    # last 50 lines of agent.log
-    hermes logs -f                 # follow agent.log in real time
-    hermes logs errors             # last 50 lines of errors.log
-    hermes logs gateway -n 100    # last 100 lines of gateway.log
-    hermes logs --level WARNING    # only WARNING+ lines
-    hermes logs --session abc123   # filter by session ID substring
-    hermes logs --component tools  # only tool-related lines
-    hermes logs --since 1h         # lines from the last hour
-    hermes logs --since 30m -f     # follow, starting 30 min ago
+    jue logs                    # last 50 lines of agent.log
+    jue logs -f                 # follow agent.log in real time
+    jue logs errors             # last 50 lines of errors.log
+    jue logs gateway -n 100    # last 100 lines of gateway.log
+    jue logs --level WARNING    # only WARNING+ lines
+    jue logs --session abc123   # filter by session ID substring
+    jue logs --component tools  # only tool-related lines
+    jue logs --since 1h         # lines from the last hour
+    jue logs --since 30m -f     # follow, starting 30 min ago
 """
 
 import re
@@ -24,7 +24,7 @@ from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Optional, Sequence
 
-from hermes_constants import get_hermes_home, display_hermes_home
+from jue_constants import get_jue_home, display_jue_home
 
 # Known log files (name → filename)
 LOG_FILES = {
@@ -169,10 +169,10 @@ def tail_log(
         print(f"Unknown log: {log_name!r}. Available: {', '.join(sorted(LOG_FILES))}")
         sys.exit(1)
 
-    log_path = get_hermes_home() / "logs" / filename
+    log_path = get_jue_home() / "logs" / filename
     if not log_path.exists():
         print(f"Log file not found: {log_path}")
-        print(f"(Logs are created when Hermes runs — try 'hermes chat' first)")
+        print(f"(Logs are created when Jue runs — try 'jue chat' first)")
         sys.exit(1)
 
     # Parse --since into a datetime cutoff
@@ -191,7 +191,7 @@ def tail_log(
     # Resolve component to logger name prefixes
     component_prefixes = None
     if component:
-        from hermes_logging import COMPONENT_PREFIXES
+        from jue_logging import COMPONENT_PREFIXES
         component_lower = component.lower()
         if component_lower not in COMPONENT_PREFIXES:
             available = ", ".join(sorted(COMPONENT_PREFIXES))
@@ -228,9 +228,9 @@ def tail_log(
     filter_desc = f" [{', '.join(filter_parts)}]" if filter_parts else ""
 
     if follow:
-        print(f"--- {display_hermes_home()}/logs/{filename}{filter_desc} (Ctrl+C to stop) ---")
+        print(f"--- {display_jue_home()}/logs/{filename}{filter_desc} (Ctrl+C to stop) ---")
     else:
-        print(f"--- {display_hermes_home()}/logs/{filename}{filter_desc} (last {num_lines}) ---")
+        print(f"--- {display_jue_home()}/logs/{filename}{filter_desc} (last {num_lines}) ---")
 
     for line in lines:
         print(line, end="")
@@ -357,12 +357,12 @@ def _follow_log(
 
 def list_logs() -> None:
     """Print available log files with sizes."""
-    log_dir = get_hermes_home() / "logs"
+    log_dir = get_jue_home() / "logs"
     if not log_dir.exists():
-        print(f"No logs directory at {display_hermes_home()}/logs/")
+        print(f"No logs directory at {display_jue_home()}/logs/")
         return
 
-    print(f"Log files in {display_hermes_home()}/logs/:\n")
+    print(f"Log files in {display_jue_home()}/logs/:\n")
     found = False
     for entry in sorted(log_dir.iterdir()):
         if entry.is_file() and entry.suffix == ".log":
@@ -387,4 +387,4 @@ def list_logs() -> None:
             found = True
 
     if not found:
-        print("  (no log files yet — run 'hermes chat' to generate logs)")
+        print("  (no log files yet — run 'jue chat' to generate logs)")

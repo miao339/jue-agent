@@ -250,7 +250,7 @@ class ChatCompletionsTransport(ProviderTransport):
                     extra_body["reasoning"] = {"enabled": True, "effort": "medium"}
 
         if is_nous:
-            extra_body["tags"] = ["product=hermes-agent"]
+            extra_body["tags"] = ["product=jue-agent"]
 
         # Ollama num_ctx
         ollama_ctx = params.get("ollama_num_ctx")
@@ -259,13 +259,17 @@ class ChatCompletionsTransport(ProviderTransport):
             options["num_ctx"] = ollama_ctx
             extra_body["options"] = options
 
-        # Ollama/custom think=false
+        # Ollama/custom think=false, iFlytek enable_thinking=true
         if params.get("is_custom_provider", False):
             if reasoning_config and isinstance(reasoning_config, dict):
                 _effort = (reasoning_config.get("effort") or "").strip().lower()
                 _enabled = reasoning_config.get("enabled", True)
                 if _effort == "none" or _enabled is False:
                     extra_body["think"] = False
+                    extra_body["enable_thinking"] = False
+                elif _enabled is True:
+                    # iFlytek (讯飞) uses enable_thinking: true
+                    extra_body["enable_thinking"] = True
 
         if is_qwen:
             extra_body["vl_high_resolution_images"] = True

@@ -1,4 +1,4 @@
-"""Tests for OpenClaw migration integration in the setup wizard."""
+"""Tests for the legacy OpenClaw migration helper and setup behavior."""
 
 from argparse import Namespace
 from types import ModuleType
@@ -18,7 +18,7 @@ class TestOfferOpenclawMigration:
     def test_skips_when_no_openclaw_dir(self, tmp_path):
         """Should return False immediately when ~/.openclaw does not exist."""
         with patch("hermes_cli.setup.Path.home", return_value=tmp_path):
-            assert setup_mod._offer_openclaw_migration(tmp_path / ".hermes") is False
+            assert setup_mod._offer_openclaw_migration(tmp_path / ".jue") is False
 
     def test_skips_when_migration_script_missing(self, tmp_path):
         """Should return False when the migration script file is absent."""
@@ -28,44 +28,44 @@ class TestOfferOpenclawMigration:
             patch("hermes_cli.setup.Path.home", return_value=tmp_path),
             patch.object(setup_mod, "_OPENCLAW_SCRIPT", tmp_path / "nonexistent.py"),
         ):
-            assert setup_mod._offer_openclaw_migration(tmp_path / ".hermes") is False
+            assert setup_mod._offer_openclaw_migration(tmp_path / ".jue") is False
 
     def test_skips_when_user_declines(self, tmp_path):
         """Should return False when user declines the migration prompt."""
         openclaw_dir = tmp_path / ".openclaw"
         openclaw_dir.mkdir()
-        script = tmp_path / "openclaw_to_hermes.py"
+        script = tmp_path / "openclaw_to_jue.py"
         script.write_text("# placeholder")
         with (
             patch("hermes_cli.setup.Path.home", return_value=tmp_path),
             patch.object(setup_mod, "_OPENCLAW_SCRIPT", script),
             patch.object(setup_mod, "prompt_yes_no", return_value=False),
         ):
-            assert setup_mod._offer_openclaw_migration(tmp_path / ".hermes") is False
+            assert setup_mod._offer_openclaw_migration(tmp_path / ".jue") is False
 
     def test_runs_migration_when_user_accepts(self, tmp_path):
         """Should run dry-run preview first, then execute after confirmation."""
         openclaw_dir = tmp_path / ".openclaw"
         openclaw_dir.mkdir()
 
-        # Create a fake hermes home with config
-        hermes_home = tmp_path / ".hermes"
-        hermes_home.mkdir()
-        config_path = hermes_home / "config.yaml"
+        # Create a fake jue home with config
+        jue_home = tmp_path / ".jue"
+        jue_home.mkdir()
+        config_path = jue_home / "config.yaml"
         config_path.write_text("agent:\n  max_turns: 90\n")
 
         # Build a fake migration module
-        fake_mod = ModuleType("openclaw_to_hermes")
+        fake_mod = ModuleType("openclaw_to_jue")
         fake_mod.resolve_selected_options = MagicMock(return_value={"soul", "memory"})
         fake_migrator = MagicMock()
         fake_migrator.migrate.return_value = {
             "summary": {"migrated": 3, "skipped": 1, "conflict": 0, "error": 0},
             "items": [{"kind": "config", "status": "migrated", "destination": "/tmp/x"}],
-            "output_dir": str(hermes_home / "migration"),
+            "output_dir": str(jue_home / "migration"),
         }
         fake_mod.Migrator = MagicMock(return_value=fake_migrator)
 
-        script = tmp_path / "openclaw_to_hermes.py"
+        script = tmp_path / "openclaw_to_jue.py"
         script.write_text("# placeholder")
 
         with (
@@ -87,7 +87,7 @@ class TestOfferOpenclawMigration:
 
             mock_spec.loader.exec_module = exec_module
 
-            result = setup_mod._offer_openclaw_migration(hermes_home)
+            result = setup_mod._offer_openclaw_migration(jue_home)
 
         assert result is True
         fake_mod.resolve_selected_options.assert_called_once_with(
@@ -118,12 +118,12 @@ class TestOfferOpenclawMigration:
         openclaw_dir = tmp_path / ".openclaw"
         openclaw_dir.mkdir()
 
-        hermes_home = tmp_path / ".hermes"
-        hermes_home.mkdir()
-        config_path = hermes_home / "config.yaml"
+        jue_home = tmp_path / ".jue"
+        jue_home.mkdir()
+        config_path = jue_home / "config.yaml"
         config_path.write_text("agent:\n  max_turns: 90\n")
 
-        fake_mod = ModuleType("openclaw_to_hermes")
+        fake_mod = ModuleType("openclaw_to_jue")
         fake_mod.resolve_selected_options = MagicMock(return_value={"soul", "memory"})
         fake_migrator = MagicMock()
         fake_migrator.migrate.return_value = {
@@ -132,7 +132,7 @@ class TestOfferOpenclawMigration:
         }
         fake_mod.Migrator = MagicMock(return_value=fake_migrator)
 
-        script = tmp_path / "openclaw_to_hermes.py"
+        script = tmp_path / "openclaw_to_jue.py"
         script.write_text("# placeholder")
 
         # First prompt (preview): Yes, Second prompt (proceed): No
@@ -155,7 +155,7 @@ class TestOfferOpenclawMigration:
 
             mock_spec.loader.exec_module = exec_module
 
-            result = setup_mod._offer_openclaw_migration(hermes_home)
+            result = setup_mod._offer_openclaw_migration(jue_home)
 
         assert result is False
         # Only dry-run Migrator was created, not the execute one
@@ -167,12 +167,12 @@ class TestOfferOpenclawMigration:
         """Should catch exceptions and return False."""
         openclaw_dir = tmp_path / ".openclaw"
         openclaw_dir.mkdir()
-        hermes_home = tmp_path / ".hermes"
-        hermes_home.mkdir()
-        config_path = hermes_home / "config.yaml"
+        jue_home = tmp_path / ".jue"
+        jue_home.mkdir()
+        config_path = jue_home / "config.yaml"
         config_path.write_text("")
 
-        script = tmp_path / "openclaw_to_hermes.py"
+        script = tmp_path / "openclaw_to_jue.py"
         script.write_text("# placeholder")
 
         with (
@@ -185,7 +185,7 @@ class TestOfferOpenclawMigration:
                 side_effect=RuntimeError("boom"),
             ),
         ):
-            result = setup_mod._offer_openclaw_migration(hermes_home)
+            result = setup_mod._offer_openclaw_migration(jue_home)
 
         assert result is False
 
@@ -193,12 +193,12 @@ class TestOfferOpenclawMigration:
         """Should bootstrap config.yaml before running migration."""
         openclaw_dir = tmp_path / ".openclaw"
         openclaw_dir.mkdir()
-        hermes_home = tmp_path / ".hermes"
-        hermes_home.mkdir()
-        config_path = hermes_home / "config.yaml"
+        jue_home = tmp_path / ".jue"
+        jue_home.mkdir()
+        config_path = jue_home / "config.yaml"
         # config does NOT exist yet
 
-        script = tmp_path / "openclaw_to_hermes.py"
+        script = tmp_path / "openclaw_to_jue.py"
         script.write_text("# placeholder")
 
         with (
@@ -213,7 +213,7 @@ class TestOfferOpenclawMigration:
                 side_effect=RuntimeError("stop early"),
             ),
         ):
-            setup_mod._offer_openclaw_migration(hermes_home)
+            setup_mod._offer_openclaw_migration(jue_home)
 
         # save_config should have been called to bootstrap the file
         mock_save.assert_called_once_with({"agent": {}})
@@ -233,16 +233,16 @@ def _first_time_args() -> Namespace:
 
 
 class TestSetupWizardOpenclawIntegration:
-    """Verify _offer_openclaw_migration is called during first-time setup."""
+    """First-time setup should no longer auto-offer OpenClaw migration."""
 
-    def test_migration_offered_during_first_time_setup(self, tmp_path):
-        """On first-time setup, _offer_openclaw_migration should be called."""
+    def test_migration_not_offered_during_first_time_setup(self, tmp_path):
+        """First-time setup should stay focused on Jue configuration only."""
         args = _first_time_args()
 
         with (
-            patch.object(setup_mod, "ensure_hermes_home"),
+            patch.object(setup_mod, "ensure_jue_home"),
             patch.object(setup_mod, "load_config", return_value={}),
-            patch.object(setup_mod, "get_hermes_home", return_value=tmp_path),
+            patch.object(setup_mod, "get_jue_home", return_value=tmp_path),
             patch.object(setup_mod, "get_env_value", return_value=""),
             patch.object(setup_mod, "is_interactive_stdin", return_value=True),
             patch("hermes_cli.auth.get_active_provider", return_value=None),
@@ -250,7 +250,6 @@ class TestSetupWizardOpenclawIntegration:
             patch("builtins.input", return_value=""),
             # Select "Full setup" (index 1) so we exercise the full path
             patch.object(setup_mod, "prompt_choice", return_value=1),
-            # Mock the migration offer
             patch.object(
                 setup_mod, "_offer_openclaw_migration", return_value=False
             ) as mock_migration,
@@ -266,10 +265,10 @@ class TestSetupWizardOpenclawIntegration:
         ):
             setup_mod.run_setup_wizard(args)
 
-        mock_migration.assert_called_once_with(tmp_path)
+        mock_migration.assert_not_called()
 
-    def test_migration_reloads_config_on_success(self, tmp_path):
-        """When migration returns True, config should be reloaded."""
+    def test_first_time_setup_does_not_reload_config_for_migration(self, tmp_path):
+        """Config should only load once because setup no longer runs migration."""
         args = _first_time_args()
         call_order = []
 
@@ -278,15 +277,15 @@ class TestSetupWizardOpenclawIntegration:
             return {}
 
         with (
-            patch.object(setup_mod, "ensure_hermes_home"),
+            patch.object(setup_mod, "ensure_jue_home"),
             patch.object(setup_mod, "load_config", side_effect=tracking_load_config),
-            patch.object(setup_mod, "get_hermes_home", return_value=tmp_path),
+            patch.object(setup_mod, "get_jue_home", return_value=tmp_path),
             patch.object(setup_mod, "get_env_value", return_value=""),
             patch.object(setup_mod, "is_interactive_stdin", return_value=True),
             patch("hermes_cli.auth.get_active_provider", return_value=None),
             patch("builtins.input", return_value=""),
             patch.object(setup_mod, "prompt_choice", return_value=1),
-            patch.object(setup_mod, "_offer_openclaw_migration", return_value=True),
+            patch.object(setup_mod, "_offer_openclaw_migration") as mock_migration,
             patch.object(setup_mod, "setup_model_provider"),
             patch.object(setup_mod, "setup_terminal_backend"),
             patch.object(setup_mod, "setup_agent_settings"),
@@ -298,49 +297,17 @@ class TestSetupWizardOpenclawIntegration:
         ):
             setup_mod.run_setup_wizard(args)
 
-        # load_config called twice: once at start, once after migration
-        assert call_order.count("load_config") == 2
-
-    def test_reloaded_config_flows_into_remaining_setup_sections(self, tmp_path):
-        args = _first_time_args()
-        initial_config = {}
-        reloaded_config = {"model": {"provider": "openrouter"}}
-
-        with (
-            patch.object(setup_mod, "ensure_hermes_home"),
-            patch.object(
-                setup_mod,
-                "load_config",
-                side_effect=[initial_config, reloaded_config],
-            ),
-            patch.object(setup_mod, "get_hermes_home", return_value=tmp_path),
-            patch.object(setup_mod, "get_env_value", return_value=""),
-            patch.object(setup_mod, "is_interactive_stdin", return_value=True),
-            patch("hermes_cli.auth.get_active_provider", return_value=None),
-            patch("builtins.input", return_value=""),
-            patch.object(setup_mod, "prompt_choice", return_value=1),
-            patch.object(setup_mod, "_offer_openclaw_migration", return_value=True),
-            patch.object(setup_mod, "setup_model_provider") as setup_model_provider,
-            patch.object(setup_mod, "setup_terminal_backend"),
-            patch.object(setup_mod, "setup_agent_settings"),
-            patch.object(setup_mod, "setup_gateway"),
-            patch.object(setup_mod, "setup_tools"),
-            patch.object(setup_mod, "save_config"),
-            patch.object(setup_mod, "_print_setup_summary"),
-            patch.object(setup_mod, "_offer_launch_chat"),
-        ):
-            setup_mod.run_setup_wizard(args)
-
-        setup_model_provider.assert_called_once_with(reloaded_config)
+        assert call_order.count("load_config") == 1
+        mock_migration.assert_not_called()
 
     def test_migration_not_offered_for_existing_install(self, tmp_path):
         """Returning users should not see the migration prompt."""
         args = _first_time_args()
 
         with (
-            patch.object(setup_mod, "ensure_hermes_home"),
+            patch.object(setup_mod, "ensure_jue_home"),
             patch.object(setup_mod, "load_config", return_value={}),
-            patch.object(setup_mod, "get_hermes_home", return_value=tmp_path),
+            patch.object(setup_mod, "get_jue_home", return_value=tmp_path),
             patch.object(
                 setup_mod,
                 "get_env_value",
@@ -578,67 +545,3 @@ class TestSkipConfiguredSection:
             )
         assert result is False
 
-
-class TestSetupWizardSkipsConfiguredSections:
-    """After migration, already-configured sections should offer skip."""
-
-    def test_sections_skipped_when_migration_imported_settings(self, tmp_path):
-        """When migration ran and API key exists, model section should be skippable.
-
-        Simulates the real flow: get_env_value returns "" during the is_existing
-        check (before migration), then returns a key after migration imported it.
-        """
-        args = _first_time_args()
-
-        # Track whether migration has "run" — after it does, API key is available
-        migration_done = {"value": False}
-
-        def env_side(key):
-            if migration_done["value"] and key == "OPENROUTER_API_KEY":
-                return "sk-xxx"
-            return ""
-
-        def fake_migration(hermes_home):
-            migration_done["value"] = True
-            return True
-
-        reloaded_config = {"model": "openai/gpt-4"}
-
-        with (
-            patch.object(setup_mod, "ensure_hermes_home"),
-            patch.object(
-                setup_mod, "load_config",
-                side_effect=[{}, reloaded_config],
-            ),
-            patch.object(setup_mod, "get_hermes_home", return_value=tmp_path),
-            patch.object(setup_mod, "get_env_value", side_effect=env_side),
-            patch.object(setup_mod, "is_interactive_stdin", return_value=True),
-            patch("hermes_cli.auth.get_active_provider", return_value=None),
-            patch("builtins.input", return_value=""),
-            patch.object(setup_mod, "prompt_choice", return_value=1),
-            # Migration succeeds and flips the env_side flag
-            patch.object(
-                setup_mod, "_offer_openclaw_migration",
-                side_effect=fake_migration,
-            ),
-            # User says No to all reconfig prompts
-            patch.object(setup_mod, "prompt_yes_no", return_value=False),
-            patch.object(setup_mod, "setup_model_provider") as mock_model,
-            patch.object(setup_mod, "setup_terminal_backend") as mock_terminal,
-            patch.object(setup_mod, "setup_agent_settings") as mock_agent,
-            patch.object(setup_mod, "setup_gateway") as mock_gateway,
-            patch.object(setup_mod, "setup_tools") as mock_tools,
-            patch.object(setup_mod, "save_config"),
-            patch.object(setup_mod, "_print_setup_summary"),
-        ):
-            setup_mod.run_setup_wizard(args)
-
-        # Model has API key → skip offered, user said No → section NOT called
-        mock_model.assert_not_called()
-        # Terminal/agent always have a summary → skip offered, user said No
-        mock_terminal.assert_not_called()
-        mock_agent.assert_not_called()
-        # Gateway has no tokens (env_side returns "" for gateway keys) → section runs
-        mock_gateway.assert_called_once()
-        # Tools have no keys → section runs
-        mock_tools.assert_called_once()

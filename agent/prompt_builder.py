@@ -12,7 +12,7 @@ import threading
 from collections import OrderedDict
 from pathlib import Path
 
-from hermes_constants import get_hermes_home, get_skills_dir, is_wsl
+from jue_constants import get_jue_home, get_skills_dir, is_wsl
 from typing import Optional
 
 from agent.skill_utils import (
@@ -86,11 +86,11 @@ def _find_git_root(start: Path) -> Optional[Path]:
     return None
 
 
-_HERMES_MD_NAMES = (".hermes.md", "HERMES.md")
+_JUE_MD_NAMES = (".jue.md", "JUE.md")
 
 
-def _find_hermes_md(cwd: Path) -> Optional[Path]:
-    """Discover the nearest ``.hermes.md`` or ``HERMES.md``.
+def _find_jue_md(cwd: Path) -> Optional[Path]:
+    """Discover the nearest ``.jue.md`` or ``JUE.md``.
 
     Search order: *cwd* first, then each parent directory up to (and
     including) the git repository root.  Returns the first match, or
@@ -100,7 +100,7 @@ def _find_hermes_md(cwd: Path) -> Optional[Path]:
     current = cwd.resolve()
 
     for directory in [current, *current.parents]:
-        for name in _HERMES_MD_NAMES:
+        for name in _JUE_MD_NAMES:
             candidate = directory / name
             if candidate.is_file():
                 return candidate
@@ -132,7 +132,7 @@ def _strip_yaml_frontmatter(content: str) -> str:
 # =========================================================================
 
 DEFAULT_AGENT_IDENTITY = (
-    "You are Hermes Agent, an intelligent AI assistant created by Nous Research. "
+    "You are Jue Agent, an intelligent AI assistant created by Nous Research. "
     "You are helpful, knowledgeable, and direct. You assist users with a wide "
     "range of tasks including answering questions, writing and editing code, "
     "analyzing information, creative work, and executing actions via your tools. "
@@ -168,12 +168,65 @@ SESSION_SEARCH_GUIDANCE = (
 )
 
 SKILLS_GUIDANCE = (
-    "After completing a complex task (5+ tool calls), fixing a tricky error, "
-    "or discovering a non-trivial workflow, save the approach as a "
-    "skill with skill_manage so you can reuse it next time.\n"
-    "When using a skill and finding it outdated, incomplete, or wrong, "
-    "patch it immediately with skill_manage(action='patch') — don't wait to be asked. "
-    "Skills that aren't maintained become liabilities."
+    "Jue accumulates along two tracks:\n"
+    "1. Skills — reusable procedures and capability structures (what to do)\n"
+    "2. Judgment triplets — situation + judgment process + generated structure (why this direction made sense)\n"
+    "\n"
+    "## Triplet操作指引\n"
+    "\n"
+    "### 链路\n"
+    "信号 → triplet → harness → evolve。每一步的触发条件是上一步自然走到头的状态：\n"
+    "- 信号浮现时，记triplet\n"
+    "- triplet积累到判断模式稳定时，生成harness\n"
+    "- harness的判断方向和实际判断不一致时，evolve\n"
+    "不需要提前判断触发条件——链路本身就是触发条件。\n"
+    "\n"
+    "### 什么时候记triplet\n"
+    "当你对某个情境做出了值得积累的判断——尤其是目标没有正确呈现意图、操作有破坏性、\n"
+    "或者判断过程本身有参考价值的时候。不是每次都记，是判断力自然注意到的时候才记。\n"
+    "调用：skill_manage(action='record_triplet')\n"
+    "\n"
+    "### 什么时候生成harness\n"
+    "当你发现自己反复对同类情境做出相似判断，判断模式已经稳定——\n"
+    "这时候把稳定的判断模式提取成harness，下次直接激活，不用每次重新判断。\n"
+    "调用：skill_manage(action='generate_harness')\n"
+    "生成时需要填写：\n"
+    "- situation：这个harness适用的情境描述\n"
+    "- judgment：稳定的判断过程（为什么这么判断）\n"
+    "- structure：判断指向的可执行方向（做什么）\n"
+    "- root_paradigm_fragment：如果需要收窄ROOT_PARADIGM，写在这里；否则留空\n"
+    "- soul：如果这个harness需要不同的判断力来源，写在这里；否则留空\n"
+    "- tags：标注这个判断从什么领域长出来的（如 [\\\"编程\\\", \\\"运维\\\"]）\n"
+    "- evolution_direction：你认为这个harness在什么情况下可能需要进化；留空也行\n"
+    "\n"
+    "### 怎么选harness\n"
+    "调用：skill_manage(action='list_harnesses')\n"
+    "根据当前情境和harness的situation匹配度选择。同领域优先，跨领域参考判断过程但不照搬结论。\n"
+    "\n"
+    "### 怎么激活harness\n"
+    "调用：skill_manage(action='use_harness', name='harness_id')\n"
+    "激活后，harness的判断过程作为主要参照，生成的方向作为次要参照，注入当前会话。\n"
+    "harness的root_paradigm_fragment追加在主ROOT_PARADIGM之后（只能收窄，不能更宽松）。\n"
+    "harness的soul如果非空，替换主SOUL。\n"
+    "\n"
+    "### 领域标签\n"
+    "生成harness时，在tags里标注这个判断从什么领域长出来。tags是描述性的，不是规定性的——\n"
+    "标[\"编程\"]是说这个harness从编程情境里长出来的，不是说它只能用在编程。\n"
+    "检索harness时注意领域匹配：同领域直接参考，跨领域参考判断过程但不照搬结论。\n"
+    "\n"
+    "### 进化\n"
+    "进化就是基于HARNESS.md的内容判断是否需要修改。模型拿到一个harness时，HARNESS.md里有：\n"
+    "- 上一个模型写的情境、判断过程、可执行方向\n"
+    "- 进化方向（上一个模型认为什么情况下可能需要进化）\n"
+    "- 进化日志（每次判断发生变化时的记录，不是使用流水账）\n"
+    "模型基于这些内容判断：当前情境和harness的情境是否一致？判断过程是否需要调整？\n"
+    "如果需要调整，调用skill_manage(action='evolve_harness')，修改相关字段，写明evolution_reason。\n"
+    "进化时只记录判断发生变化的那次——没有新判断的使用不值得记，记了反而淹没进化信号。\n"
+    "\n"
+    "## Skills操作\n"
+    "When you discover a reusable procedure, save or update a skill with skill_manage.\n"
+    "When using a skill and finding it outdated, incomplete, or wrong, patch it immediately with "
+    "skill_manage(action='patch') — stale skills become liabilities."
 )
 
 TOOL_USE_ENFORCEMENT_GUIDANCE = (
@@ -444,7 +497,7 @@ _SKILLS_SNAPSHOT_VERSION = 1
 
 
 def _skills_prompt_snapshot_path() -> Path:
-    return get_hermes_home() / ".skills_prompt_snapshot.json"
+    return get_jue_home() / ".skills_prompt_snapshot.json"
 
 
 def clear_skills_system_prompt_cache(*, clear_snapshot: bool = False) -> None:
@@ -606,7 +659,7 @@ def build_skills_system_prompt(
     Falls back to a full filesystem scan when both layers miss.
 
     External skill directories (``skills.external_dirs`` in config.yaml) are
-    scanned alongside the local ``~/.hermes/skills/`` directory.  External dirs
+    scanned alongside the local ``~/.jue/skills/`` directory.  External dirs
     are read-only — they appear in the index but new skills are always created
     in the local dir.  Local skills take precedence when names collide.
     """
@@ -621,8 +674,8 @@ def build_skills_system_prompt(
     # produce distinct cache entries (gateway serves multiple platforms).
     from gateway.session_context import get_session_env
     _platform_hint = (
-        os.environ.get("HERMES_PLATFORM")
-        or get_session_env("HERMES_SESSION_PLATFORM")
+        os.environ.get("JUE_PLATFORM")
+        or get_session_env("JUE_SESSION_PLATFORM")
         or ""
     )
     disabled = get_disabled_skill_names()
@@ -881,7 +934,7 @@ def build_nous_subscription_prompt(valid_tool_names: "set[str] | None" = None) -
             "When a Nous-managed feature is active, do not ask the user for Firecrawl, FAL, OpenAI TTS, or Browser-Use API keys.",
             "If the user is not subscribed and asks for a capability that Nous subscription would unlock or simplify, suggest Nous subscription as one option alongside direct setup or local alternatives.",
             "Do not mention subscription unless the user asks about it or it directly solves the current missing capability.",
-            "Useful commands: hermes setup, hermes setup tools, hermes setup terminal, hermes status.",
+            "Useful commands: jue setup, jue setup tools, jue setup terminal, jue status.",
         ]
     )
     return "\n".join(lines)
@@ -903,20 +956,41 @@ def _truncate_content(content: str, filename: str, max_chars: int = CONTEXT_FILE
     return head + marker + tail
 
 
+def load_root_paradigm() -> Optional[str]:
+    """Load ROOT_PARADIGM.md from the Jue harness2 package directory.
+
+    This is a locked, read-only file that must always be injected before
+    SOUL.md in the system prompt. It defines the judgment paradigm and
+    cannot be overridden by the user or model at runtime.
+    """
+    paradigm_path = Path(__file__).resolve().parent.parent / "jue" / "harness2" / "ROOT_PARADIGM.md"
+    if not paradigm_path.exists():
+        logger.warning("ROOT_PARADIGM.md not found at %s — Jue paradigm layer missing", paradigm_path)
+        return None
+    try:
+        content = paradigm_path.read_text(encoding="utf-8").strip()
+        if not content:
+            return None
+        return content
+    except Exception as e:
+        logger.warning("Could not read ROOT_PARADIGM.md from %s: %s", paradigm_path, e)
+        return None
+
+
 def load_soul_md() -> Optional[str]:
-    """Load SOUL.md from HERMES_HOME and return its content, or None.
+    """Load SOUL.md from JUE_HOME and return its content, or None.
 
     Used as the agent identity (slot #1 in the system prompt).  When this
     returns content, ``build_context_files_prompt`` should be called with
     ``skip_soul=True`` so SOUL.md isn't injected twice.
     """
     try:
-        from hermes_cli.config import ensure_hermes_home
-        ensure_hermes_home()
+        from hermes_cli.config import ensure_jue_home
+        ensure_jue_home()
     except Exception as e:
-        logger.debug("Could not ensure HERMES_HOME before loading SOUL.md: %s", e)
+        logger.debug("Could not ensure JUE_HOME before loading SOUL.md: %s", e)
 
-    soul_path = get_hermes_home() / "SOUL.md"
+    soul_path = get_jue_home() / "SOUL.md"
     if not soul_path.exists():
         return None
     try:
@@ -931,26 +1005,26 @@ def load_soul_md() -> Optional[str]:
         return None
 
 
-def _load_hermes_md(cwd_path: Path) -> str:
-    """.hermes.md / HERMES.md — walk to git root."""
-    hermes_md_path = _find_hermes_md(cwd_path)
-    if not hermes_md_path:
+def _load_jue_md(cwd_path: Path) -> str:
+    """.jue.md / JUE.md — walk to git root."""
+    jue_md_path = _find_jue_md(cwd_path)
+    if not jue_md_path:
         return ""
     try:
-        content = hermes_md_path.read_text(encoding="utf-8").strip()
+        content = jue_md_path.read_text(encoding="utf-8").strip()
         if not content:
             return ""
         content = _strip_yaml_frontmatter(content)
-        rel = hermes_md_path.name
+        rel = jue_md_path.name
         try:
-            rel = str(hermes_md_path.relative_to(cwd_path))
+            rel = str(jue_md_path.relative_to(cwd_path))
         except ValueError:
             pass
         content = _scan_context_content(content, rel)
         result = f"## {rel}\n\n{content}"
-        return _truncate_content(result, ".hermes.md")
+        return _truncate_content(result, ".jue.md")
     except Exception as e:
-        logger.debug("Could not read %s: %s", hermes_md_path, e)
+        logger.debug("Could not read %s: %s", jue_md_path, e)
         return ""
 
 
@@ -1020,12 +1094,12 @@ def build_context_files_prompt(cwd: Optional[str] = None, skip_soul: bool = Fals
     """Discover and load context files for the system prompt.
 
     Priority (first found wins — only ONE project context type is loaded):
-      1. .hermes.md / HERMES.md  (walk to git root)
+      1. .jue.md / JUE.md  (walk to git root)
       2. AGENTS.md / agents.md   (cwd only)
       3. CLAUDE.md / claude.md   (cwd only)
       4. .cursorrules / .cursor/rules/*.mdc  (cwd only)
 
-    SOUL.md from HERMES_HOME is independent and always included when present.
+    SOUL.md from JUE_HOME is independent and always included when present.
     Each context source is capped at 20,000 chars.
 
     When *skip_soul* is True, SOUL.md is not included here (it was already
@@ -1039,7 +1113,7 @@ def build_context_files_prompt(cwd: Optional[str] = None, skip_soul: bool = Fals
 
     # Priority-based project context: first match wins
     project_context = (
-        _load_hermes_md(cwd_path)
+        _load_jue_md(cwd_path)
         or _load_agents_md(cwd_path)
         or _load_claude_md(cwd_path)
         or _load_cursorrules(cwd_path)
@@ -1047,7 +1121,7 @@ def build_context_files_prompt(cwd: Optional[str] = None, skip_soul: bool = Fals
     if project_context:
         sections.append(project_context)
 
-    # SOUL.md from HERMES_HOME only — skip when already loaded as identity
+    # SOUL.md from JUE_HOME only — skip when already loaded as identity
     if not skip_soul:
         soul_content = load_soul_md()
         if soul_content:

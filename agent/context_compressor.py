@@ -600,7 +600,12 @@ class ContextCompressor(ContextEngine):
 
         return "\n\n".join(parts)
 
-    def _generate_summary(self, turns_to_summarize: List[Dict[str, Any]], focus_topic: str = None) -> Optional[str]:
+    def _generate_summary(
+        self,
+        turns_to_summarize: List[Dict[str, Any]],
+        focus_topic: str = None,
+        preserved_context: str = "",
+    ) -> Optional[str]:
         """Generate a structured summary of conversation turns.
 
         Uses a structured template (Goal, Progress, Decisions, Resolved/Pending
@@ -646,6 +651,12 @@ class ContextCompressor(ContextEngine):
             "with [REDACTED]. Note that the user had credentials present, but "
             "do not preserve their values."
         )
+        if preserved_context:
+            _summarizer_preamble += (
+                " 保留解释决策为什么做出的推理依据。"
+                "不要丢弃判断力根基规则（ROOT_PARADIGM）、激活的harness、"
+                "或影响过行为的近期判断三元组的相关信息。"
+            )
 
         # Shared structured template (used by both paths).
         _template_sections = f"""## Active Task
@@ -707,6 +718,11 @@ Target ~{summary_budget} tokens. Be CONCRETE — include file paths, command out
 
 Write only the summary body. Do not include any preamble or prefix."""
 
+        if preserved_context:
+            prompt_context = f"\n\nJue上下文（压缩后必须保持一致）：\n{preserved_context}\n"
+        else:
+            prompt_context = ""
+
         if self._previous_summary:
             # Iterative update: preserve existing info, add new progress
             prompt = f"""{_summarizer_preamble}
@@ -721,7 +737,7 @@ NEW TURNS TO INCORPORATE:
 
 Update the summary using this exact structure. PRESERVE all existing information that is still relevant. ADD new completed actions to the numbered list (continue numbering). Move items from "In Progress" to "Completed Actions" when done. Move answered questions to "Resolved Questions". Update "Active State" to reflect current state. Remove information only if it is clearly obsolete. CRITICAL: Update "## Active Task" to reflect the user's most recent unfulfilled request — this is the most important field for task continuity.
 
-{_template_sections}"""
+{_template_sections}{prompt_context}"""
         else:
             # First compaction: summarize from scratch
             prompt = f"""{_summarizer_preamble}
@@ -733,7 +749,7 @@ TURNS TO SUMMARIZE:
 
 Use this exact structure:
 
-{_template_sections}"""
+{_template_sections}{prompt_context}"""
 
         # Inject focus topic guidance when the user provides one via /compress <focus>.
         # This goes at the end of the prompt so it takes precedence.
@@ -1062,7 +1078,13 @@ The user has requested that this compaction PRIORITISE preserving all informatio
     # Main compression entry point
     # ------------------------------------------------------------------
 
-    def compress(self, messages: List[Dict[str, Any]], current_tokens: int = None, focus_topic: str = None) -> List[Dict[str, Any]]:
+    def compress(
+        self,
+        messages: List[Dict[str, Any]],
+        current_tokens: int = None,
+        focus_topic: str = None,
+        preserved_context: str = "",
+    ) -> List[Dict[str, Any]]:
         """Compress conversation messages by summarizing middle turns.
 
         Algorithm:
@@ -1137,7 +1159,11 @@ The user has requested that this compaction PRIORITISE preserving all informatio
             )
 
         # Phase 3: Generate structured summary
-        summary = self._generate_summary(turns_to_summarize, focus_topic=focus_topic)
+        summary = self._generate_summary(
+            turns_to_summarize,
+            focus_topic=focus_topic,
+            preserved_context=preserved_context,
+        )
 
         # Phase 4: Assemble compressed message list
         compressed = []

@@ -156,11 +156,11 @@ audio.outputConnectors[0].connect(aout.inputConnectors[0])
 result = 'audio chain ok'
 """)
 
-# Step 2: Time driver (MUST be rgba32float — see pitfalls #6)
+# Step 2: Time djue (MUST be rgba32float — see pitfalls #6)
 # td_execute_python script:
 td_execute_python(code="""
 root = op('/project1')
-td = root.create(constantTOP, 'time_driver')
+td = root.create(constantTOP, 'time_djue')
 td.par.format = 'rgba32float'
 td.par.outputresolution = 'custom'
 td.par.resolutionw = 1
@@ -184,7 +184,7 @@ sd.text = open('/tmp/my_shader.glsl').read()
 glsl.par.pixeldat = sd
 
 # Wire: input 0 = time, input 1 = spectrum texture
-op('/project1/time_driver').outputConnectors[0].connect(glsl.inputConnectors[0])
+op('/project1/time_djue').outputConnectors[0].connect(glsl.inputConnectors[0])
 op('/project1/spectrum_tex').outputConnectors[0].connect(glsl.inputConnectors[1])
 result = 'glsl ok'
 """)
@@ -640,8 +640,8 @@ spec_tex.par.chop = math
 spec_tex.par.dataformat = 'r'
 spec_tex.par.layout = 'rowscropped'
 
-# Time driver (rgba32float to avoid 0-1 clamping!)
-time_drv = root.create(constantTOP, 'time_driver')
+# Time djue (rgba32float to avoid 0-1 clamping!)
+time_drv = root.create(constantTOP, 'time_djue')
 time_drv.par.format = 'rgba32float'
 time_drv.par.outputresolution = 'custom'
 time_drv.par.resolutionw = 1

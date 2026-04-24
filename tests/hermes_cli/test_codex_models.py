@@ -111,9 +111,9 @@ def test_model_command_uses_runtime_access_token_for_codex_list(monkeypatch):
 
 
 def _make_cli(model="anthropic/claude-opus-4.6", **kwargs):
-    """Create a HermesCLI with minimal mocking."""
+    """Create a JueCLI with minimal mocking."""
     import cli as _cli_mod
-    from cli import HermesCLI
+    from cli import JueCLI
 
     _clean_config = {
         "model": {
@@ -125,13 +125,13 @@ def _make_cli(model="anthropic/claude-opus-4.6", **kwargs):
         "agent": {},
         "terminal": {"env_type": "local"},
     }
-    clean_env = {"LLM_MODEL": "", "HERMES_MAX_ITERATIONS": ""}
+    clean_env = {"LLM_MODEL": "", "JUE_MAX_ITERATIONS": ""}
     with (
         patch("cli.get_tool_definitions", return_value=[]),
         patch.dict("os.environ", clean_env, clear=False),
         patch.dict(_cli_mod.__dict__, {"CLI_CONFIG": _clean_config}),
     ):
-        cli = HermesCLI(model=model, **kwargs)
+        cli = JueCLI(model=model, **kwargs)
     return cli
 
 
@@ -224,11 +224,11 @@ class TestNormalizeModelForProvider:
         # Don't pass model= so _model_is_default is True
         with (
             patch("cli.get_tool_definitions", return_value=[]),
-            patch.dict("os.environ", {"LLM_MODEL": "", "HERMES_MAX_ITERATIONS": ""}, clear=False),
+            patch.dict("os.environ", {"LLM_MODEL": "", "JUE_MAX_ITERATIONS": ""}, clear=False),
             patch.dict(_cli_mod.__dict__, {"CLI_CONFIG": _clean_config}),
         ):
-            from cli import HermesCLI
-            cli = HermesCLI()
+            from cli import JueCLI
+            cli = JueCLI()
 
         assert cli._model_is_default is True
         with patch(
@@ -255,11 +255,11 @@ class TestNormalizeModelForProvider:
         }
         with (
             patch("cli.get_tool_definitions", return_value=[]),
-            patch.dict("os.environ", {"LLM_MODEL": "", "HERMES_MAX_ITERATIONS": ""}, clear=False),
+            patch.dict("os.environ", {"LLM_MODEL": "", "JUE_MAX_ITERATIONS": ""}, clear=False),
             patch.dict(_cli_mod.__dict__, {"CLI_CONFIG": _clean_config}),
         ):
-            from cli import HermesCLI
-            cli = HermesCLI()
+            from cli import JueCLI
+            cli = JueCLI()
 
         with patch(
             "hermes_cli.codex_models.get_codex_model_ids",

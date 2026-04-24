@@ -1,4 +1,4 @@
-"""Helpers for loading Hermes .env files consistently across entrypoints."""
+"""Helpers for loading Jue .env files consistently across entrypoints."""
 
 from __future__ import annotations
 
@@ -7,6 +7,7 @@ import sys
 from pathlib import Path
 
 from dotenv import load_dotenv
+from jue_constants import get_jue_home
 
 
 # Env var name suffixes that indicate credential values.  These are the
@@ -16,7 +17,7 @@ from dotenv import load_dotenv
 _CREDENTIAL_SUFFIXES = ("_API_KEY", "_TOKEN", "_SECRET", "_KEY")
 
 # Names we've already warned about during this process, so repeated
-# load_hermes_dotenv() calls (user env + project env, gateway hot-reload,
+# load_jue_dotenv() calls (user env + project env, gateway hot-reload,
 # tests) don't spam the same warning multiple times.
 _WARNED_KEYS: set[str] = set()
 
@@ -74,7 +75,7 @@ def _sanitize_loaded_credentials() -> None:
             "rich-text editor, or web page that substituted lookalike\n"
             "  Unicode glyphs for ASCII letters. If authentication fails "
             "(e.g. \"API key not valid\"), re-copy the key from the\n"
-            "  provider's dashboard and run `hermes setup` (or edit the "
+            "  provider's dashboard and run `jue setup` (or edit the "
             ".env file in a plain-text editor).",
             file=sys.stderr,
         )
@@ -102,7 +103,7 @@ def _sanitize_env_file_if_needed(path: Path) -> None:
     (see #8908).
 
     We delegate to ``hermes_cli.config._sanitize_env_lines`` which
-    already knows all valid Hermes env-var names and can split
+    already knows all valid Jue env-var names and can split
     concatenated lines correctly.
     """
     if not path.exists():
@@ -138,22 +139,22 @@ def _sanitize_env_file_if_needed(path: Path) -> None:
         pass  # best-effort — don't block gateway startup
 
 
-def load_hermes_dotenv(
+def load_jue_dotenv(
     *,
-    hermes_home: str | os.PathLike | None = None,
+    jue_home: str | os.PathLike | None = None,
     project_env: str | os.PathLike | None = None,
 ) -> list[Path]:
-    """Load Hermes environment files with user config taking precedence.
+    """Load Jue environment files with user config taking precedence.
 
     Behavior:
-    - `~/.hermes/.env` overrides stale shell-exported values when present.
+    - `~/.jue/.env` overrides stale shell-exported values when present.
     - project `.env` acts as a dev fallback and only fills missing values when
       the user env exists.
     - if no user env exists, the project `.env` also overrides stale shell vars.
     """
     loaded: list[Path] = []
 
-    home_path = Path(hermes_home or os.getenv("HERMES_HOME", Path.home() / ".hermes"))
+    home_path = Path(jue_home) if jue_home is not None else get_jue_home()
     user_env = home_path / ".env"
     project_env_path = Path(project_env) if project_env else None
 
@@ -170,3 +171,8 @@ def load_hermes_dotenv(
         loaded.append(project_env_path)
 
     return loaded
+
+
+# Compatibility alias for external-package imports that still use the
+# historical function name.
+load_hermes_dotenv = load_jue_dotenv

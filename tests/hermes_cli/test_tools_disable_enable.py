@@ -1,4 +1,4 @@
-"""Tests for hermes tools disable/enable/list command (backend)."""
+"""Tests for jue tools disable/enable/list command (backend)."""
 from argparse import Namespace
 from unittest.mock import patch
 

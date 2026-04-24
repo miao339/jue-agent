@@ -1,5 +1,5 @@
-# nix/web.nix — Hermes Web Dashboard (Vite/React) frontend build
-{ pkgs, hermesNpmLib, ... }:
+# nix/web.nix — Jue Web Dashboard (Vite/React) frontend build
+{ pkgs, jueNpmLib, ... }:
 let
   src = ../web;
   npmDeps = pkgs.fetchNpmDeps {
@@ -7,10 +7,10 @@ let
     hash = "sha256-TS/vrCHbdvXkPcAPxImKzAd2pdDCrKlgYZkXBMQ+TEg=";
   };
 
-  npm = hermesNpmLib.mkNpmPassthru { folder = "web"; attr = "web"; pname = "hermes-web"; };
+  npm = jueNpmLib.mkNpmPassthru { folder = "web"; attr = "web"; pname = "jue-web"; };
 in
 pkgs.buildNpmPackage (npm // {
-  pname = "hermes-web";
+  pname = "jue-web";
   version = "0.0.0";
   inherit src npmDeps;
 

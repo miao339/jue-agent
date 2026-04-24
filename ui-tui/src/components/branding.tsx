@@ -1,4 +1,4 @@
-import { Box, Text, useStdout } from '@hermes/ink'
+import { Box, Text, useStdout } from '@jue/ink'
 
 import { artWidth, caduceus, CADUCEUS_WIDTH, logo, LOGO_WIDTH } from '../banner.js'
 import { flat } from '../lib/text.js'
@@ -27,11 +27,11 @@ export function Banner({ t }: { t: Theme }) {
         <ArtLines lines={logoLines} />
       ) : (
         <Text bold color={t.color.gold}>
-          {t.brand.icon} NOUS HERMES
+          NOUS JUE
         </Text>
       )}
 
-      <Text color={t.color.dim}>{t.brand.icon} Nous Research · Messenger of the Digital Gods</Text>
+      <Text color={t.color.dim}>Nous Research · Messenger of the Digital Gods</Text>
     </Box>
   )
 }
@@ -39,7 +39,10 @@ export function Banner({ t }: { t: Theme }) {
 export function SessionPanel({ info, sid, t }: SessionPanelProps) {
   const cols = useStdout().stdout?.columns ?? 100
   const heroLines = caduceus(t.color, t.bannerHero || undefined)
-  const leftW = Math.min((artWidth(heroLines) || CADUCEUS_WIDTH) + 4, Math.floor(cols * 0.4))
+  const hasHero = heroLines.length > 0
+  const leftW = hasHero
+    ? Math.min((artWidth(heroLines) || CADUCEUS_WIDTH) + 4, Math.floor(cols * 0.4))
+    : Math.min(34, Math.floor(cols * 0.35))
   const wide = cols >= 90 && leftW + 40 < cols
   const w = Math.max(20, wide ? cols - leftW - 14 : cols - 12)
   const lineBudget = Math.max(12, w - 2)
@@ -94,8 +97,12 @@ export function SessionPanel({ info, sid, t }: SessionPanelProps) {
     <Box borderColor={t.color.bronze} borderStyle="round" marginBottom={1} paddingX={2} paddingY={1}>
       {wide && (
         <Box flexDirection="column" marginRight={2} width={leftW}>
-          <ArtLines lines={heroLines} />
-          <Text />
+          {hasHero && (
+            <>
+              <ArtLines lines={heroLines} />
+              <Text />
+            </>
+          )}
 
           <Text color={t.color.amber}>
             {info.model.split('/').pop()}
@@ -168,7 +175,7 @@ export function SessionPanel({ info, sid, t }: SessionPanelProps) {
               - run{' '}
             </Text>
             <Text bold color={t.color.warn}>
-              {info.update_command || 'hermes update'}
+              {info.update_command || 'jue update'}
             </Text>
             <Text bold={false} color={t.color.warn} dimColor>
               {' '}

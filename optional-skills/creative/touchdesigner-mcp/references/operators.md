@@ -78,7 +78,7 @@ Time-varying numeric data: audio, animation curves, sensor data, control signals
 | Operator | Type Name | Key Parameters | Use |
 |----------|-----------|---------------|-----|
 | Constant CHOP | `constantChop` | `name0/value0`, `name1/value1`... | Static named channels. Control panel for parameters. |
-| LFO CHOP | `lfoChop` | `frequency`, `type` (0=Sin, 1=Tri, 2=Square, 3=Ramp, 4=Pulse), `amp`, `offset`, `phase` | Low frequency oscillator. Animation driver. |
+| LFO CHOP | `lfoChop` | `frequency`, `type` (0=Sin, 1=Tri, 2=Square, 3=Ramp, 4=Pulse), `amp`, `offset`, `phase` | Low frequency oscillator. Animation djue. |
 | Noise CHOP | `noiseChop` | `type`, `roughness`, `period`, `amp`, `seed`, `channels` | Smooth random motion. Organic animation. |
 | Pattern CHOP | `patternChop` | `type` (0=Sine, 1=Triangle, ...), `length`, `cycles` | Generate waveform patterns. |
 | Timer CHOP | `timerChop` | `length`, `play`, `cue`, `cycles` | Countdown/count-up timer with cue points. |

@@ -119,15 +119,15 @@ def test_config_set_yolo_toggles_session_scope():
 
 
 def test_enable_gateway_prompts_sets_gateway_env(monkeypatch):
-    monkeypatch.delenv("HERMES_EXEC_ASK", raising=False)
-    monkeypatch.delenv("HERMES_GATEWAY_SESSION", raising=False)
-    monkeypatch.delenv("HERMES_INTERACTIVE", raising=False)
+    monkeypatch.delenv("JUE_EXEC_ASK", raising=False)
+    monkeypatch.delenv("JUE_GATEWAY_SESSION", raising=False)
+    monkeypatch.delenv("JUE_INTERACTIVE", raising=False)
 
     server._enable_gateway_prompts()
 
-    assert server.os.environ["HERMES_GATEWAY_SESSION"] == "1"
-    assert server.os.environ["HERMES_EXEC_ASK"] == "1"
-    assert server.os.environ["HERMES_INTERACTIVE"] == "1"
+    assert server.os.environ["JUE_GATEWAY_SESSION"] == "1"
+    assert server.os.environ["JUE_EXEC_ASK"] == "1"
+    assert server.os.environ["JUE_INTERACTIVE"] == "1"
 
 
 def test_setup_status_reports_provider_config(monkeypatch):
@@ -139,7 +139,7 @@ def test_setup_status_reports_provider_config(monkeypatch):
 
 
 def test_config_set_reasoning_updates_live_session_and_agent(tmp_path, monkeypatch):
-    monkeypatch.setattr(server, "_hermes_home", tmp_path)
+    monkeypatch.setattr(server, "_jue_home", tmp_path)
     agent = types.SimpleNamespace(reasoning_config=None)
     server._sessions["sid"] = _session(agent=agent)
 
@@ -157,7 +157,7 @@ def test_config_set_reasoning_updates_live_session_and_agent(tmp_path, monkeypat
 
 
 def test_config_set_verbose_updates_session_mode_and_agent(tmp_path, monkeypatch):
-    monkeypatch.setattr(server, "_hermes_home", tmp_path)
+    monkeypatch.setattr(server, "_jue_home", tmp_path)
     agent = types.SimpleNamespace(verbose_logging=False)
     server._sessions["sid"] = _session(agent=agent)
 
@@ -232,7 +232,7 @@ def test_config_set_model_global_persists(monkeypatch):
 
 
 def test_config_set_model_syncs_inference_provider_env(monkeypatch):
-    """After an explicit provider switch, HERMES_INFERENCE_PROVIDER must
+    """After an explicit provider switch, JUE_INFERENCE_PROVIDER must
     reflect the user's choice so ambient re-resolution (credential pool
     refresh, aux clients) picks up the new provider instead of the original
     one persisted in config or shell env.
@@ -261,7 +261,7 @@ def test_config_set_model_syncs_inference_provider_env(monkeypatch):
     )
 
     server._sessions["sid"] = _session(agent=_Agent())
-    monkeypatch.setenv("HERMES_INFERENCE_PROVIDER", "openrouter")
+    monkeypatch.setenv("JUE_INFERENCE_PROVIDER", "openrouter")
     monkeypatch.setattr("hermes_cli.model_switch.switch_model", lambda **_kwargs: result)
     monkeypatch.setattr(server, "_restart_slash_worker", lambda session: None)
     monkeypatch.setattr(server, "_emit", lambda *args, **kwargs: None)
@@ -270,7 +270,7 @@ def test_config_set_model_syncs_inference_provider_env(monkeypatch):
         {"id": "1", "method": "config.set", "params": {"session_id": "sid", "key": "model", "value": "claude-sonnet-4.6 --provider anthropic"}}
     )
 
-    assert os.environ["HERMES_INFERENCE_PROVIDER"] == "anthropic"
+    assert os.environ["JUE_INFERENCE_PROVIDER"] == "anthropic"
 
 
 def test_config_set_personality_rejects_unknown_name(monkeypatch):
@@ -1184,13 +1184,13 @@ def test_session_create_no_race_keeps_worker_alive(monkeypatch):
 
 
 # --------------------------------------------------------------------------
-# model.options — curated-list parity with `hermes model` and classic /model
+# model.options — curated-list parity with `jue model` and classic /model
 # --------------------------------------------------------------------------
 
 
 def test_model_options_does_not_overwrite_curated_models(monkeypatch):
     """The TUI model.options handler must surface the same curated model
-    list as `hermes model` and the classic CLI /model picker.
+    list as `jue model` and the classic CLI /model picker.
 
     Regression: earlier versions of this handler unconditionally replaced
     each provider's curated ``models`` field with ``provider_model_ids()``

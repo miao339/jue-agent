@@ -5,10 +5,10 @@
 { inputs, ... }: {
   perSystem = { pkgs, system, ... }:
     let
-      hermes-agent = inputs.self.packages.${system}.default;
-      hermes-tui = inputs.self.packages.${system}.tui;
-      hermes-web = inputs.self.packages.${system}.web;
-      packages = [ hermes-agent hermes-tui hermes-web ];
+      jue-agent = inputs.self.packages.${system}.default;
+      jue-tui = inputs.self.packages.${system}.tui;
+      jue-web = inputs.self.packages.${system}.web;
+      packages = [ jue-agent jue-tui jue-web ];
     in {
       devShells.default = pkgs.mkShell {
         inputsFrom = packages;
@@ -20,9 +20,9 @@
           hooks = map (p: p.passthru.devShellHook or "") packages;
           combined = pkgs.lib.concatStringsSep "\n" (builtins.filter (h: h != "") hooks);
         in ''
-          echo "Hermes Agent dev shell"
+          echo "Jue Agent dev shell"
           ${combined}
-          echo "Ready. Run 'hermes' to start."
+          echo "Ready. Run 'jue' to start."
         '';
       };
     };

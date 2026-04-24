@@ -17,7 +17,7 @@ const sidebars: SidebarsConfig = {
     },
     {
       type: 'category',
-      label: 'Using Hermes',
+      label: 'Using Jue',
       collapsed: true,
       items: [
         'user-guide/cli',
@@ -154,10 +154,10 @@ const sidebars: SidebarsConfig = {
         'guides/daily-briefing-bot',
         'guides/team-telegram-assistant',
         'guides/python-library',
-        'guides/use-mcp-with-hermes',
-        'guides/use-soul-with-hermes',
-        'guides/use-voice-mode-with-hermes',
-        'guides/build-a-hermes-plugin',
+        'guides/use-mcp-with-jue',
+        'guides/use-soul-with-jue',
+        'guides/use-voice-mode-with-jue',
+        'guides/build-a-jue-plugin',
         'guides/automate-with-cron',
         'guides/automation-templates',
         'guides/cron-troubleshooting',

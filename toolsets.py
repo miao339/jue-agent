@@ -28,7 +28,7 @@ from typing import List, Dict, Any, Set, Optional
 
 # Shared tool list for CLI and all messaging platform toolsets.
 # Edit this once to update all platforms simultaneously.
-_HERMES_CORE_TOOLS = [
+_JUE_CORE_TOOLS = [
     # Web
     "web_search", "web_extract",
     # Terminal + process management
@@ -232,13 +232,13 @@ TOOLSETS = {
     },
     
     # ==========================================================================
-    # Full Hermes toolsets (CLI + messaging platforms)
+    # Full Jue toolsets (CLI + messaging platforms)
     #
     # All platforms share the same core tools (including send_message,
     # which is gated on gateway running via its check_fn).
     # ==========================================================================
 
-    "hermes-acp": {
+    "jue-acp": {
         "description": "Editor integration (VS Code, Zed, JetBrains) — coding-focused tools without messaging, audio, or clarify UI",
         "tools": [
             "web_search", "web_extract",
@@ -257,7 +257,7 @@ TOOLSETS = {
         "includes": []
     },
 
-    "hermes-api-server": {
+    "jue-api-server": {
         "description": "OpenAI-compatible API server — full agent tools accessible via HTTP (no interactive UI tools like clarify or send_message)",
         "tools": [
             # Web
@@ -290,127 +290,127 @@ TOOLSETS = {
         "includes": []
     },
     
-    "hermes-cli": {
+    "jue-cli": {
         "description": "Full interactive CLI toolset - all default tools plus cronjob management",
-        "tools": _HERMES_CORE_TOOLS,
+        "tools": _JUE_CORE_TOOLS,
         "includes": []
     },
     
-    "hermes-telegram": {
+    "jue-telegram": {
         "description": "Telegram bot toolset - full access for personal use (terminal has safety checks)",
-        "tools": _HERMES_CORE_TOOLS,
+        "tools": _JUE_CORE_TOOLS,
         "includes": []
     },
     
-    "hermes-discord": {
+    "jue-discord": {
         "description": "Discord bot toolset - full access (terminal has safety checks via dangerous command approval)",
-        "tools": _HERMES_CORE_TOOLS + [
+        "tools": _JUE_CORE_TOOLS + [
             # Discord server introspection & management (gated on DISCORD_BOT_TOKEN via check_fn)
             "discord_server",
         ],
         "includes": []
     },
     
-    "hermes-whatsapp": {
+    "jue-whatsapp": {
         "description": "WhatsApp bot toolset - similar to Telegram (personal messaging, more trusted)",
-        "tools": _HERMES_CORE_TOOLS,
+        "tools": _JUE_CORE_TOOLS,
         "includes": []
     },
     
-    "hermes-slack": {
+    "jue-slack": {
         "description": "Slack bot toolset - full access for workspace use (terminal has safety checks)",
-        "tools": _HERMES_CORE_TOOLS,
+        "tools": _JUE_CORE_TOOLS,
         "includes": []
     },
     
-    "hermes-signal": {
+    "jue-signal": {
         "description": "Signal bot toolset - encrypted messaging platform (full access)",
-        "tools": _HERMES_CORE_TOOLS,
+        "tools": _JUE_CORE_TOOLS,
         "includes": []
     },
 
-    "hermes-bluebubbles": {
+    "jue-bluebubbles": {
         "description": "BlueBubbles iMessage bot toolset - Apple iMessage via local BlueBubbles server",
-        "tools": _HERMES_CORE_TOOLS,
+        "tools": _JUE_CORE_TOOLS,
         "includes": []
     },
 
-    "hermes-homeassistant": {
+    "jue-homeassistant": {
         "description": "Home Assistant bot toolset - smart home event monitoring and control",
-        "tools": _HERMES_CORE_TOOLS,
+        "tools": _JUE_CORE_TOOLS,
         "includes": []
     },
 
-    "hermes-email": {
-        "description": "Email bot toolset - interact with Hermes via email (IMAP/SMTP)",
-        "tools": _HERMES_CORE_TOOLS,
+    "jue-email": {
+        "description": "Email bot toolset - interact with Jue via email (IMAP/SMTP)",
+        "tools": _JUE_CORE_TOOLS,
         "includes": []
     },
 
-    "hermes-mattermost": {
+    "jue-mattermost": {
         "description": "Mattermost bot toolset - self-hosted team messaging (full access)",
-        "tools": _HERMES_CORE_TOOLS,
+        "tools": _JUE_CORE_TOOLS,
         "includes": []
     },
 
-    "hermes-matrix": {
+    "jue-matrix": {
         "description": "Matrix bot toolset - decentralized encrypted messaging (full access)",
-        "tools": _HERMES_CORE_TOOLS,
+        "tools": _JUE_CORE_TOOLS,
         "includes": []
     },
 
-    "hermes-dingtalk": {
+    "jue-dingtalk": {
         "description": "DingTalk bot toolset - enterprise messaging platform (full access)",
-        "tools": _HERMES_CORE_TOOLS,
+        "tools": _JUE_CORE_TOOLS,
         "includes": []
     },
 
-    "hermes-feishu": {
+    "jue-feishu": {
         "description": "Feishu/Lark bot toolset - enterprise messaging via Feishu/Lark (full access)",
-        "tools": _HERMES_CORE_TOOLS,
+        "tools": _JUE_CORE_TOOLS,
         "includes": []
     },
 
-    "hermes-weixin": {
+    "jue-weixin": {
         "description": "Weixin bot toolset - personal WeChat messaging via iLink (full access)",
-        "tools": _HERMES_CORE_TOOLS,
+        "tools": _JUE_CORE_TOOLS,
         "includes": []
     },
 
-    "hermes-qqbot": {
+    "jue-qqbot": {
         "description": "QQBot toolset - QQ messaging via Official Bot API v2 (full access)",
-        "tools": _HERMES_CORE_TOOLS,
+        "tools": _JUE_CORE_TOOLS,
         "includes": []
     },
 
-    "hermes-wecom": {
+    "jue-wecom": {
         "description": "WeCom bot toolset - enterprise WeChat messaging (full access)",
-        "tools": _HERMES_CORE_TOOLS,
+        "tools": _JUE_CORE_TOOLS,
         "includes": []
     },
 
-    "hermes-wecom-callback": {
+    "jue-wecom-callback": {
         "description": "WeCom callback toolset - enterprise self-built app messaging (full access)",
-        "tools": _HERMES_CORE_TOOLS,
+        "tools": _JUE_CORE_TOOLS,
         "includes": []
     },
 
-    "hermes-sms": {
-        "description": "SMS bot toolset - interact with Hermes via SMS (Twilio)",
-        "tools": _HERMES_CORE_TOOLS,
+    "jue-sms": {
+        "description": "SMS bot toolset - interact with Jue via SMS (Twilio)",
+        "tools": _JUE_CORE_TOOLS,
         "includes": []
     },
 
-    "hermes-webhook": {
+    "jue-webhook": {
         "description": "Webhook toolset - receive and process external webhook events",
-        "tools": _HERMES_CORE_TOOLS,
+        "tools": _JUE_CORE_TOOLS,
         "includes": []
     },
 
-    "hermes-gateway": {
+    "jue-gateway": {
         "description": "Gateway toolset - union of all messaging platform tools",
         "tools": [],
-        "includes": ["hermes-telegram", "hermes-discord", "hermes-whatsapp", "hermes-slack", "hermes-signal", "hermes-bluebubbles", "hermes-homeassistant", "hermes-email", "hermes-sms", "hermes-mattermost", "hermes-matrix", "hermes-dingtalk", "hermes-feishu", "hermes-wecom", "hermes-wecom-callback", "hermes-weixin", "hermes-qqbot", "hermes-webhook"]
+        "includes": ["jue-telegram", "jue-discord", "jue-whatsapp", "jue-slack", "jue-signal", "jue-bluebubbles", "jue-homeassistant", "jue-email", "jue-sms", "jue-mattermost", "jue-matrix", "jue-dingtalk", "jue-feishu", "jue-wecom", "jue-wecom-callback", "jue-weixin", "jue-qqbot", "jue-webhook"]
     }
 }
 

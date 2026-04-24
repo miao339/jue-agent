@@ -3,6 +3,7 @@
 *.pyc*
 __pycache__/
 .venv/
+.jue/
 .vscode/
 .env
 .env.local

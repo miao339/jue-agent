@@ -84,7 +84,7 @@ If you use Nix (on NixOS, macOS, or Linux), there's a dedicated setup path with 
 
 ## Manual / Developer Installation
 
-If you want to clone the repo and install from source — for contributing, running from a specific branch, or having full control over the virtual environment — see the [Development Setup](../developer-guide/contributing.md#development-setup) section in the Contributing guide.
+If you want to clone the repo and install from source — for running from a specific branch or having full control over the virtual environment — see the [Development Setup](../developer-guide/contributing.md#development-setup) section in the developer guide.
 
 ---
 

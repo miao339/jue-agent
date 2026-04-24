@@ -80,14 +80,8 @@ Why these packages?
 ### 2. Clone Jue
 
 ```bash
-git clone --recurse-submodules https://github.com/miao339/jue-agent.git
+git clone https://github.com/miao339/jue-agent.git
 cd jue-agent
-```
-
-If you already cloned without submodules:
-
-```bash
-git submodule update --init --recursive
 ```
 
 ### 3. Create a virtual environment

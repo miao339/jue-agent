@@ -32,7 +32,7 @@ We value contributions in this order:
 
 | Requirement | Notes |
 |-------------|-------|
-| **Git** | With `--recurse-submodules` support |
+| **Git** | Required for cloning and updates |
 | **Python 3.11+** | uv will install it if missing |
 | **uv** | Fast Python package manager ([install](https://docs.astral.sh/uv/)) |
 | **Node.js 18+** | Optional — needed for browser tools and WhatsApp bridge |
@@ -40,7 +40,7 @@ We value contributions in this order:
 ### Clone and Install
 
 ```bash
-git clone --recurse-submodules https://github.com/miao339/jue-agent.git
+git clone https://github.com/miao339/jue-agent.git
 cd jue-agent
 
 # Create venv with Python 3.11
@@ -49,7 +49,6 @@ export VIRTUAL_ENV="$(pwd)/venv"
 
 # Install with all extras (messaging, cron, CLI menus, dev tools)
 uv pip install -e ".[all,dev]"
-uv pip install -e "./tinker-atropos"
 
 # Optional: browser tools
 npm install

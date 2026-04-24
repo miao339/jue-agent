@@ -1,12 +1,12 @@
 ---
 sidebar_position: 13
 title: "RL Training"
-description: "Reinforcement learning on agent behaviors with Tinker-Atropos — environment discovery, training, and evaluation"
+description: "Reinforcement learning on agent behaviors with an external Tinker-Atropos backend — environment discovery, training, and evaluation"
 ---
 
 # RL Training
 
-Jue Agent includes an integrated RL (Reinforcement Learning) training pipeline built on **Tinker-Atropos**. This enables training language models on environment-specific tasks using GRPO (Group Relative Policy Optimization) with LoRA adapters, orchestrated entirely through the agent's tool interface.
+Jue Agent includes optional RL (Reinforcement Learning) training tools that can connect to an external **Tinker-Atropos** checkout. This enables training language models on environment-specific tasks using GRPO (Group Relative Policy Optimization) with LoRA adapters, orchestrated through the agent's tool interface.
 
 ## Overview
 
@@ -25,12 +25,17 @@ RL training requires:
 - **Python >= 3.11** (Tinker package requirement)
 - **TINKER_API_KEY** — API key for the Tinker training service
 - **WANDB_API_KEY** — API key for Weights & Biases metrics tracking
-- The `tinker-atropos` submodule (at `tinker-atropos/` relative to the Jue root)
+- A local `tinker-atropos` checkout, configured with `JUE_TINKER_ATROPOS_ROOT`
 
 ```bash
 # Set up API keys
 jue config set TINKER_API_KEY your-tinker-key
 jue config set WANDB_API_KEY your-wandb-key
+
+# Optional backend checkout
+git clone https://github.com/nousresearch/tinker-atropos /path/to/tinker-atropos
+export JUE_TINKER_ATROPOS_ROOT=/path/to/tinker-atropos
+uv pip install -e "$JUE_TINKER_ATROPOS_ROOT"
 ```
 
 When both keys are present and Python >= 3.11 is available, the `rl` toolset is automatically enabled.
@@ -58,7 +63,7 @@ When both keys are present and Python >= 3.11 is available, the `rl` toolset is 
 List the available RL environments
 ```
 
-The agent calls `rl_list_environments()` which scans `tinker-atropos/tinker_atropos/environments/` using AST parsing to find Python classes inheriting from `BaseEnv`. Each environment defines:
+The agent calls `rl_list_environments()` which scans `JUE_TINKER_ATROPOS_ROOT/tinker_atropos/environments/` using AST parsing to find Python classes inheriting from `BaseEnv`. Each environment defines:
 
 - **Dataset loading** — where training data comes from (e.g., HuggingFace datasets)
 - **Prompt construction** — how to format items for the model
@@ -191,7 +196,7 @@ flowchart LR
 
 To create a new RL environment:
 
-1. Create a Python file in `tinker-atropos/tinker_atropos/environments/`
+1. Create a Python file in `$JUE_TINKER_ATROPOS_ROOT/tinker_atropos/environments/`
 2. Define a class that inherits from `BaseEnv`
 3. Implement the required methods:
    - `load_dataset()` — Load your training data

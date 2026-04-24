@@ -489,7 +489,7 @@ python my_env.py evaluate \
 
 - `TINKER_API_KEY` — API key for the [Tinker](https://tinker.computer) training service
 - `WANDB_API_KEY` — for Weights & Biases metrics tracking
-- The `tinker-atropos` submodule (at `tinker-atropos/` in the repo)
+- A local `tinker-atropos` checkout configured with `JUE_TINKER_ATROPOS_ROOT`
 
 See [RL Training](/user-guide/features/rl-training) for the agent-driven RL workflow.
 

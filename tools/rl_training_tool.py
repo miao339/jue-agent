@@ -52,9 +52,12 @@ logger = logging.getLogger(__name__)
 # Path Configuration
 # ============================================================================
 
-# Path to tinker-atropos submodule (relative to jue-agent root)
+# Optional path to a local tinker-atropos checkout. It is intentionally not
+# bundled in Jue; set JUE_TINKER_ATROPOS_ROOT to enable it.
 JUE_ROOT = Path(__file__).parent.parent
-TINKER_ATROPOS_ROOT = JUE_ROOT / "tinker-atropos"
+TINKER_ATROPOS_ROOT = Path(
+    os.getenv("JUE_TINKER_ATROPOS_ROOT", str(JUE_ROOT / "tinker-atropos"))
+).expanduser()
 ENVIRONMENTS_DIR = TINKER_ATROPOS_ROOT / "tinker_atropos" / "environments"
 CONFIGS_DIR = TINKER_ATROPOS_ROOT / "configs"
 LOGS_DIR = get_jue_home() / "logs" / "rl_training"
@@ -510,7 +513,7 @@ async def rl_list_environments() -> str:
     """
     List all available RL environments.
     
-    Scans tinker-atropos/tinker_atropos/environments/ for Python files
+    Scans JUE_TINKER_ATROPOS_ROOT/tinker_atropos/environments/ for Python files
     containing classes that inherit from BaseEnv.
     
     Returns information about each environment including:
@@ -1320,7 +1323,8 @@ def check_rl_python_version() -> bool:
     """
     Check if Python version meets the minimum for RL tools.
     
-    tinker-atropos depends on the 'tinker' package which requires Python >= 3.11.
+    The optional tinker-atropos backend depends on the 'tinker' package, which
+    requires Python >= 3.11.
     """
     return sys.version_info >= (3, 11)
 

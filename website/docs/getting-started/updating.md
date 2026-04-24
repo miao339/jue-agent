@@ -24,7 +24,7 @@ This pulls the latest code, updates dependencies, and prompts you to configure a
 
 When you run `jue update`, the following steps occur:
 
-1. **Git pull** — pulls the latest code from the `main` branch and updates submodules
+1. **Git pull** — pulls the latest code from the `main` branch
 2. **Dependency install** — runs `uv pip install -e ".[all]"` to pick up new or changed dependencies
 3. **Config migration** — detects new config options added since your version and prompts you to set them
 4. **Gateway auto-restart** — if the gateway service is running (systemd on Linux, launchd on macOS), it is **automatically restarted** after the update completes so the new code takes effect immediately
@@ -100,13 +100,11 @@ If you installed manually (not via the quick installer):
 cd /path/to/jue-agent
 export VIRTUAL_ENV="$(pwd)/venv"
 
-# Pull latest code and submodules
+# Pull latest code
 git pull origin main
-git submodule update --init --recursive
 
 # Reinstall (picks up new dependencies)
 uv pip install -e ".[all]"
-uv pip install -e "./tinker-atropos"
 
 # Check for new config options
 jue config check
@@ -125,7 +123,6 @@ git log --oneline -10
 
 # Roll back to a specific commit
 git checkout <commit-hash>
-git submodule update --init --recursive
 uv pip install -e ".[all]"
 
 # Restart the gateway if running
@@ -136,7 +133,6 @@ To roll back to a specific release tag:
 
 ```bash
 git checkout v0.6.0
-git submodule update --init --recursive
 uv pip install -e ".[all]"
 ```
 

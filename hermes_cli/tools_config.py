@@ -465,9 +465,9 @@ def _run_post_setup(post_setup_key: str):
         try:
             __import__("tinker_atropos")
         except ImportError:
-            tinker_dir = PROJECT_ROOT / "tinker-atropos"
+            tinker_dir = Path(os.getenv("JUE_TINKER_ATROPOS_ROOT", str(PROJECT_ROOT / "tinker-atropos"))).expanduser()
             if tinker_dir.exists() and (tinker_dir / "pyproject.toml").exists():
-                _print_info("    Installing tinker-atropos submodule...")
+                _print_info("    Installing tinker-atropos backend...")
                 import subprocess
                 uv_bin = shutil.which("uv")
                 if uv_bin:
@@ -484,11 +484,12 @@ def _run_post_setup(post_setup_key: str):
                     _print_success("    tinker-atropos installed")
                 else:
                     _print_warning("    tinker-atropos install failed - run manually:")
-                    _print_info('      uv pip install -e "./tinker-atropos"')
+                    _print_info(f'      uv pip install -e "{tinker_dir}"')
             else:
-                _print_warning("    tinker-atropos submodule not found - run:")
-                _print_info("      git submodule update --init --recursive")
-                _print_info('      uv pip install -e "./tinker-atropos"')
+                _print_warning("    tinker-atropos backend not configured")
+                _print_info("      git clone https://github.com/nousresearch/tinker-atropos /path/to/tinker-atropos")
+                _print_info("      export JUE_TINKER_ATROPOS_ROOT=/path/to/tinker-atropos")
+                _print_info('      uv pip install -e "$JUE_TINKER_ATROPOS_ROOT"')
 
 
 # ─── Platform / Toolset Helpers ───────────────────────────────────────────────

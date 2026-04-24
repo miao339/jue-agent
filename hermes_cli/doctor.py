@@ -1000,26 +1000,25 @@ def run_doctor(args):
         pass  # bedrock_adapter not available — skip silently
 
     # =========================================================================
-    # Check: Submodules
+    # Check: Optional RL Backend
     # =========================================================================
     print()
-    print(color("◆ Submodules", Colors.CYAN, Colors.BOLD))
+    print(color("◆ Optional RL Backend", Colors.CYAN, Colors.BOLD))
     
-    # tinker-atropos (RL training backend)
-    tinker_dir = PROJECT_ROOT / "tinker-atropos"
+    tinker_dir = Path(os.getenv("JUE_TINKER_ATROPOS_ROOT", str(PROJECT_ROOT / "tinker-atropos"))).expanduser()
     if tinker_dir.exists() and (tinker_dir / "pyproject.toml").exists():
         if py_version >= (3, 11):
             try:
                 __import__("tinker_atropos")
                 check_ok("tinker-atropos", "(RL training backend)")
             except ImportError:
-                install_cmd = f"{_python_install_cmd()} -e ./tinker-atropos"
+                install_cmd = f"{_python_install_cmd()} -e {tinker_dir}"
                 check_warn("tinker-atropos found but not installed", f"(run: {install_cmd})")
                 issues.append(f"Install tinker-atropos: {install_cmd}")
         else:
             check_warn("tinker-atropos requires Python 3.11+", f"(current: {py_version.major}.{py_version.minor})")
     else:
-        check_warn("tinker-atropos not found", "(run: git submodule update --init --recursive)")
+        check_info("tinker-atropos optional backend not configured (set JUE_TINKER_ATROPOS_ROOT for RL training)")
     
     # =========================================================================
     # Check: Tool Availability

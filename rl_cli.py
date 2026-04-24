@@ -26,6 +26,7 @@ from pathlib import Path
 
 import fire
 import yaml
+from jue_constants import get_jue_home, OPENROUTER_BASE_URL
 
 # Load .env from ~/.jue/.env first, then project root as dev fallback.
 # User-managed env files should override stale shell exports on restart.
@@ -38,18 +39,20 @@ _loaded_env_paths = load_hermes_dotenv(jue_home=_jue_home, project_env=_project_
 for _env_path in _loaded_env_paths:
     print(f"✅ Loaded environment variables from {_env_path}")
 
-# Set terminal working directory to tinker-atropos submodule
+# Set terminal working directory to an optional tinker-atropos checkout.
 # This ensures terminal commands run in the right context for RL work
-tinker_atropos_dir = Path(__file__).parent / 'tinker-atropos'
+tinker_atropos_dir = Path(
+    os.getenv("JUE_TINKER_ATROPOS_ROOT", str(Path(__file__).parent / "tinker-atropos"))
+).expanduser()
 if tinker_atropos_dir.exists():
     os.environ['TERMINAL_CWD'] = str(tinker_atropos_dir)
     os.environ['JUE_QUIET'] = '1'  # Disable temp subdirectory creation
     print(f"📂 Terminal working directory: {tinker_atropos_dir}")
 else:
-    # Fall back to jue-agent directory if submodule not found
+    # Fall back to jue-agent directory if backend is not configured
     os.environ['TERMINAL_CWD'] = str(Path(__file__).parent)
     os.environ['JUE_QUIET'] = '1'
-    print(f"⚠️  tinker-atropos submodule not found, using: {Path(__file__).parent}")
+    print(f"⚠️  tinker-atropos backend not configured, using: {Path(__file__).parent}")
 
 # Import agent and tools
 from run_agent import AIAgent
@@ -59,8 +62,6 @@ from tools.rl_training_tool import get_missing_keys
 # ============================================================================
 # Config Loading
 # ============================================================================
-
-from jue_constants import get_jue_home, OPENROUTER_BASE_URL
 
 DEFAULT_MODEL = "anthropic/claude-opus-4.5"
 DEFAULT_BASE_URL = OPENROUTER_BASE_URL
@@ -127,7 +128,7 @@ You have access to RL training tools for running reinforcement learning on model
 
 ## Environment Files
 
-Environment files are located in: `tinker-atropos/tinker_atropos/environments/`
+Environment files are located under `JUE_TINKER_ATROPOS_ROOT/tinker_atropos/environments/`
 
 Study existing environments to learn patterns. Look for:
 - `load_dataset()` calls - how data is loaded
@@ -200,11 +201,13 @@ def check_requirements():
 
 
 def check_tinker_atropos():
-    """Check if tinker-atropos submodule is properly set up."""
-    tinker_path = Path(__file__).parent / "tinker-atropos"
+    """Check if the optional tinker-atropos backend is properly set up."""
+    tinker_path = Path(
+        os.getenv("JUE_TINKER_ATROPOS_ROOT", str(Path(__file__).parent / "tinker-atropos"))
+    ).expanduser()
     
     if not tinker_path.exists():
-        return False, "tinker-atropos submodule not found. Run: git submodule update --init"
+        return False, "tinker-atropos backend not found. Set JUE_TINKER_ATROPOS_ROOT to a local checkout."
     
     envs_path = tinker_path / "tinker_atropos" / "environments"
     if not envs_path.exists():
@@ -289,7 +292,7 @@ def main(
         print("\n🔍 Checking tinker-atropos setup...")
         ok, result = check_tinker_atropos()
         if ok:
-            print("✅ tinker-atropos submodule found")
+            print("✅ tinker-atropos backend found")
             print(f"   Path: {result.get('path')}")
             print(f"   Environments found: {result.get('environments_count', 0)}")
             
@@ -303,8 +306,9 @@ def main(
         else:
             print(f"❌ tinker-atropos not set up: {result}")
             print("\nTo set up:")
-            print("  git submodule update --init")
-            print("  pip install -e ./tinker-atropos")
+            print("  git clone https://github.com/nousresearch/tinker-atropos /path/to/tinker-atropos")
+            print("  export JUE_TINKER_ATROPOS_ROOT=/path/to/tinker-atropos")
+            print("  pip install -e \"$JUE_TINKER_ATROPOS_ROOT\"")
         return
     
     # Handle environment listing
@@ -321,7 +325,7 @@ def main(
             if not envs:
                 print("No environments found.")
                 print("\nMake sure tinker-atropos is set up:")
-                print("  git submodule update --init")
+                print("  export JUE_TINKER_ATROPOS_ROOT=/path/to/tinker-atropos")
                 return
             
             for env in envs:
@@ -337,8 +341,8 @@ def main(
         except Exception as e:
             print(f"❌ Error listing environments: {e}")
             print("\nMake sure tinker-atropos is set up:")
-            print("  git submodule update --init")
-            print("  pip install -e ./tinker-atropos")
+            print("  export JUE_TINKER_ATROPOS_ROOT=/path/to/tinker-atropos")
+            print("  pip install -e \"$JUE_TINKER_ATROPOS_ROOT\"")
         return
     
     # Check requirements

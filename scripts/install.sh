@@ -862,11 +862,6 @@ install_deps() {
         log_success "Main package installed"
         log_info "Termux note: browser/WhatsApp tooling is not installed by default; see the Termux guide for optional follow-up steps."
 
-        if [ -d "tinker-atropos" ] && [ -f "tinker-atropos/pyproject.toml" ]; then
-            log_info "tinker-atropos submodule found — skipping install (optional, for RL training)"
-            log_info "  To install later: $PIP_PYTHON -m pip install -e \"./tinker-atropos\""
-        fi
-
         log_success "All dependencies installed"
         return 0
     fi
@@ -922,13 +917,6 @@ install_deps() {
     fi
 
     log_success "Main package installed"
-
-    # tinker-atropos (RL training) is optional — skip by default.
-    # To enable RL tools: git submodule update --init tinker-atropos && uv pip install -e "./tinker-atropos"
-    if [ -d "tinker-atropos" ] && [ -f "tinker-atropos/pyproject.toml" ]; then
-        log_info "tinker-atropos submodule found — skipping install (optional, for RL training)"
-        log_info "  To install: $UV_CMD pip install -e \"./tinker-atropos\""
-    fi
 
     log_success "All dependencies installed"
 }

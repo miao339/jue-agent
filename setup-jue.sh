@@ -312,14 +312,7 @@ else
         # Touch the file just in case it doesn't exist yet but was selected
         touch "$SHELL_CONFIG" 2>/dev/null || true
 
-        if ! grep -q 'JUE_TUI=1' "$SHELL_CONFIG" 2>/dev/null; then
-            echo "" >> "$SHELL_CONFIG"
-            echo "# Jue Agent — launch the TUI by default; use 'jue --no-tui' for classic CLI" >> "$SHELL_CONFIG"
-            echo 'export JUE_TUI=1' >> "$SHELL_CONFIG"
-            echo -e "${GREEN}✓${NC} Enabled TUI by default in $SHELL_CONFIG"
-        else
-            echo -e "${GREEN}✓${NC} JUE_TUI=1 already in $SHELL_CONFIG"
-        fi
+        echo -e "${GREEN}✓${NC} Jue defaults to classic CLI; launch TUI explicitly with: jue --tui"
 
         if ! echo "$PATH" | tr ':' '\n' | grep -q "^$HOME/.local/bin$"; then
             if ! grep -q '\.local/bin' "$SHELL_CONFIG" 2>/dev/null; then

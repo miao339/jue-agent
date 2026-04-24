@@ -646,7 +646,7 @@ DEFAULT_CONFIG = {
         "resume_display": "full",
         "busy_input_mode": "interrupt",
         "bell_on_complete": False,
-        "show_reasoning": False,
+        "show_reasoning": True,
         "streaming": True,
         "final_response_markdown": "strip",  # render | strip | raw
         "inline_diffs": True,     # Show inline diff previews for write actions (write_file, patch, skill_manage)
@@ -777,6 +777,7 @@ DEFAULT_CONFIG = {
                                # independent of the parent's max_iterations)
         "reasoning_effort": "",  # reasoning effort for subagents: "xhigh", "high", "medium",
                                  # "low", "minimal", "none" (empty = inherit parent's level)
+        "child_timeout_seconds": 600,  # hard timeout per subagent; values below 300s are clamped
         "max_concurrent_children": 3,  # max parallel children per batch; floor of 1 enforced, no ceiling
         # Orchestrator role controls (see tools/delegate_tool.py:_get_max_spawn_depth
         # and _get_orchestrator_enabled).  Values are clamped to [1, 3] with a

@@ -116,13 +116,13 @@ def _get_child_timeout() -> float:
     """Read delegation.child_timeout_seconds from config.
 
     Returns the number of seconds a single child agent is allowed to run
-    before being considered stuck.  Default: 300 s (5 minutes).
+    before being considered stuck.  Default: 600 s (10 minutes).
     """
     cfg = _load_config()
     val = cfg.get("child_timeout_seconds")
     if val is not None:
         try:
-            return max(30.0, float(val))
+            return max(300.0, float(val))
         except (TypeError, ValueError):
             logger.warning(
                 "delegation.child_timeout_seconds=%r is not a valid number; "
@@ -131,7 +131,7 @@ def _get_child_timeout() -> float:
     env_val = os.getenv("DELEGATION_CHILD_TIMEOUT_SECONDS")
     if env_val:
         try:
-            return max(30.0, float(env_val))
+            return max(300.0, float(env_val))
         except (TypeError, ValueError):
             pass
     return float(DEFAULT_CHILD_TIMEOUT)
@@ -190,7 +190,7 @@ def _get_orchestrator_enabled() -> bool:
 
 
 DEFAULT_MAX_ITERATIONS = 50
-DEFAULT_CHILD_TIMEOUT = 300  # seconds before a child agent is considered stuck
+DEFAULT_CHILD_TIMEOUT = 600  # seconds before a child agent is considered stuck
 _HEARTBEAT_INTERVAL = 30  # seconds between parent activity heartbeats during delegation
 _HEARTBEAT_STALE_CYCLES = 5  # mark child stale after this many heartbeats with no iteration progress
 DEFAULT_TOOLSETS = ["terminal", "file", "web"]

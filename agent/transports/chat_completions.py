@@ -218,6 +218,7 @@ class ChatCompletionsTransport(ProviderTransport):
         is_openrouter = params.get("is_openrouter", False)
         is_nous = params.get("is_nous", False)
         is_github_models = params.get("is_github_models", False)
+        custom_enable_thinking_default = params.get("custom_enable_thinking_default", True)
 
         provider_prefs = params.get("provider_preferences")
         if provider_prefs and is_openrouter:
@@ -270,6 +271,11 @@ class ChatCompletionsTransport(ProviderTransport):
                 elif _enabled is True:
                     # iFlytek (讯飞) uses enable_thinking: true
                     extra_body["enable_thinking"] = True
+            elif custom_enable_thinking_default:
+                # Custom OpenAI-compatible providers such as iFlytek expose
+                # thinking via enable_thinking. Default on; users can opt out
+                # with reasoning_effort: none.
+                extra_body["enable_thinking"] = True
 
         if is_qwen:
             extra_body["vl_high_resolution_images"] = True

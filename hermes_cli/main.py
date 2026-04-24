@@ -1045,7 +1045,7 @@ def cmd_chat(args):
     """Run interactive chat CLI."""
     use_tui = (
         not getattr(args, "no_tui", False)
-        and (getattr(args, "tui", False) or os.environ.get("JUE_TUI") == "1")
+        and getattr(args, "tui", False)
     )
 
     # Resolve --continue into --resume with the latest session or by name
@@ -6483,7 +6483,7 @@ For more help on a command:
         dest="no_tui",
         action="store_true",
         default=False,
-        help="Launch the classic REPL even when JUE_TUI=1",
+        help="Launch the classic REPL",
     )
     parser.add_argument(
         "--dev",
@@ -6633,7 +6633,7 @@ For more help on a command:
         dest="no_tui",
         action="store_true",
         default=False,
-        help="Launch the classic REPL even when JUE_TUI=1",
+        help="Launch the classic REPL",
     )
     chat_parser.add_argument(
         "--dev",

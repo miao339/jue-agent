@@ -20,10 +20,10 @@ def test_setup_jue_script_has_termux_path():
     assert "$PREFIX/bin" in content
 
 
-def test_setup_jue_script_enables_tui_by_default():
+def test_setup_jue_script_keeps_cli_default():
     content = SETUP_SCRIPT.read_text(encoding="utf-8")
 
-    assert "export JUE_TUI=1" in content
-    assert "jue --no-tui" in content
+    assert "export JUE_TUI=1" not in content
+    assert "jue --tui" in content
     assert "$HOME/.zshrc" in content
     assert "$HOME/.bashrc" in content

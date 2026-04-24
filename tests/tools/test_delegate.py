@@ -32,6 +32,7 @@ from tools.delegate_tool import (
     _strip_blocked_tools,
     _resolve_child_credential_pool,
     _resolve_delegation_credentials,
+    _get_child_timeout,
 )
 
 
@@ -1262,6 +1263,18 @@ class TestDelegateHeartbeat(unittest.TestCase):
         self.assertTrue(
             any("API call #5 completed" in desc for desc in touch_calls),
             f"Heartbeat should include last_activity_desc: {touch_calls}")
+
+
+class TestDelegateChildTimeout(unittest.TestCase):
+    @patch("tools.delegate_tool._load_config")
+    def test_default_child_timeout_is_reasonable(self, mock_cfg):
+        mock_cfg.return_value = {}
+        self.assertEqual(_get_child_timeout(), 600.0)
+
+    @patch("tools.delegate_tool._load_config")
+    def test_child_timeout_clamps_low_values(self, mock_cfg):
+        mock_cfg.return_value = {"child_timeout_seconds": 120}
+        self.assertEqual(_get_child_timeout(), 300.0)
 
 
 class TestDelegationReasoningEffort(unittest.TestCase):

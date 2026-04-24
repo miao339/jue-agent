@@ -7137,6 +7137,18 @@ class AIAgent:
             or base_url_host_matches(self.base_url, "moonshot.ai")
             or base_url_host_matches(self.base_url, "moonshot.cn")
         )
+        _custom_enable_thinking_default = False
+        if self.provider == "custom":
+            _custom_model = (self.model or "").lower()
+            _custom_base = self._base_url_lower
+            _custom_enable_thinking_default = (
+                "iflytek" in _custom_base
+                or "xunfei" in _custom_base
+                or "xf-yun" in _custom_base
+                or "xfyun" in _custom_base
+                or "spark-api" in _custom_base
+                or _custom_model.startswith("astron")
+            )
 
         # Temperature: _fixed_temperature_for_model may return OMIT_TEMPERATURE
         # sentinel (temperature omitted entirely), a numeric override, or None.
@@ -7206,6 +7218,7 @@ class AIAgent:
             is_nvidia_nim=_is_nvidia,
             is_kimi=_is_kimi,
             is_custom_provider=self.provider == "custom",
+            custom_enable_thinking_default=_custom_enable_thinking_default,
             ollama_num_ctx=self._ollama_num_ctx,
             provider_preferences=_prefs or None,
             qwen_prepare_fn=self._qwen_prepare_chat_messages if _is_qwen else None,
@@ -9539,7 +9552,7 @@ class AIAgent:
             
             api_start_time = time.time()
             retry_count = 0
-            max_retries = 3
+            max_retries = 10
             primary_recovery_attempted = False
             max_compression_attempts = 3
             codex_auth_retry_attempted=False
@@ -9947,7 +9960,10 @@ class AIAgent:
                                     ) for tc in (_trunc_nr.tool_calls or [])
                                 ] or None,
                                 reasoning=_trunc_nr.reasoning,
-                                reasoning_content=None,
+                                reasoning_content=(
+                                    _trunc_nr.provider_data.get("reasoning_content")
+                                    if _trunc_nr.provider_data else None
+                                ),
                                 reasoning_details=(
                                     _trunc_nr.provider_data.get("reasoning_details")
                                     if _trunc_nr.provider_data else None
@@ -11185,7 +11201,10 @@ class AIAgent:
                         content=_cnr.content,
                         tool_calls=_tc_list or None,
                         reasoning=_cnr.reasoning,
-                        reasoning_content=None,
+                        reasoning_content=(
+                            _cnr.provider_data.get("reasoning_content")
+                            if _cnr.provider_data else None
+                        ),
                         codex_reasoning_items=(
                             _cnr.provider_data.get("codex_reasoning_items")
                             if _cnr.provider_data else None
@@ -11215,7 +11234,10 @@ class AIAgent:
                             for tc in (_nr.tool_calls or [])
                         ] or None,
                         reasoning=_nr.reasoning,
-                        reasoning_content=None,
+                        reasoning_content=(
+                            _nr.provider_data.get("reasoning_content")
+                            if _nr.provider_data else None
+                        ),
                         reasoning_details=(
                             _nr.provider_data.get("reasoning_details")
                             if _nr.provider_data else None

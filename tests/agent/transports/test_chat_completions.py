@@ -130,6 +130,27 @@ class TestChatCompletionsBuildKwargs:
         )
         assert kw["extra_body"]["enable_thinking"] is True
 
+    def test_custom_enable_thinking_default_true(self, transport):
+        """Custom providers default thinking on unless explicitly disabled."""
+        msgs = [{"role": "user", "content": "Hi"}]
+        kw = transport.build_kwargs(
+            model="astron-code-latest", messages=msgs,
+            is_custom_provider=True,
+            reasoning_config=None,
+        )
+        assert kw["extra_body"]["enable_thinking"] is True
+
+    def test_custom_enable_thinking_default_can_be_suppressed(self, transport):
+        """Callers can suppress the custom default for incompatible endpoints."""
+        msgs = [{"role": "user", "content": "Hi"}]
+        kw = transport.build_kwargs(
+            model="accounts/firefunction-v2", messages=msgs,
+            is_custom_provider=True,
+            reasoning_config=None,
+            custom_enable_thinking_default=False,
+        )
+        assert "extra_body" not in kw
+
     def test_custom_enable_thinking_disabled(self, transport):
         """When reasoning is explicitly disabled, enable_thinking should be False."""
         msgs = [{"role": "user", "content": "Hi"}]

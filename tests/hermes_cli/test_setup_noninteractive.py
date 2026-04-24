@@ -83,6 +83,23 @@ class TestNonInteractiveSetup:
         out = capsys.readouterr().out
         assert "jue config set model.provider custom" in out
 
+    def test_chat_ignores_legacy_jue_tui_env_by_default(self, monkeypatch):
+        """Bare `jue` stays on CLI even if an older setup exported JUE_TUI=1."""
+        from hermes_cli.main import cmd_chat
+
+        args = _make_chat_args()
+        monkeypatch.setenv("JUE_TUI", "1")
+
+        with (
+            patch("hermes_cli.main._has_any_provider_configured", return_value=True),
+            patch("hermes_cli.main._launch_tui") as mock_tui,
+            patch("cli.main") as mock_cli,
+        ):
+            cmd_chat(args)
+
+        mock_tui.assert_not_called()
+        mock_cli.assert_called_once()
+
     def test_no_tty_skips_wizard(self, capsys):
         """When stdin has no TTY, the setup wizard should print guidance and return."""
         from hermes_cli.setup import run_setup_wizard

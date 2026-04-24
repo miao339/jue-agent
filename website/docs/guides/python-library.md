@@ -15,19 +15,19 @@ Jue isn't just a CLI tool. You can import `AIAgent` directly and use it programm
 Install Jue directly from the repository:
 
 ```bash
-pip install git+https://github.com/NousResearch/hermes-agent.git
+pip install git+https://github.com/miao339/jue-agent.git
 ```
 
 Or with [uv](https://docs.astral.sh/uv/):
 
 ```bash
-uv pip install git+https://github.com/NousResearch/hermes-agent.git
+uv pip install git+https://github.com/miao339/jue-agent.git
 ```
 
 You can also pin it in your `requirements.txt`:
 
 ```text
-jue-agent @ git+https://github.com/NousResearch/hermes-agent.git
+jue-agent @ git+https://github.com/miao339/jue-agent.git
 ```
 
 :::tip

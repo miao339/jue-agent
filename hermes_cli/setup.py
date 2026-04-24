@@ -29,7 +29,7 @@ logger = logging.getLogger(__name__)
 
 PROJECT_ROOT = Path(__file__).parent.parent.resolve()
 
-_DOCS_BASE = "https://jue-agent.nousresearch.com/docs"
+_DOCS_BASE = "TODO"
 
 
 def _model_config_dict(config: Dict[str, Any]) -> Dict[str, Any]:
@@ -176,7 +176,7 @@ def is_interactive_stdin() -> bool:
 def print_noninteractive_setup_guidance(reason: str | None = None) -> None:
     """Print guidance for headless/non-interactive setup flows."""
     print()
-    print(color("⚕ Jue Setup — Non-interactive mode", Colors.CYAN, Colors.BOLD))
+    print(color("Jue Setup — Non-interactive mode", Colors.CYAN, Colors.BOLD))
     print()
     if reason:
         print_info(reason)
@@ -1868,7 +1868,7 @@ def _setup_slack():
     print_info("   6. Reinstall the app after any scope or event changes")
     print_info("   7. After installing, invite the bot to channels: /invite @YourBot")
     print()
-    print_info("   Full guide: https://jue-agent.nousresearch.com/docs/user-guide/messaging/slack/")
+    print_info("   Full guide: TODO")
     print()
     bot_token = prompt("Slack Bot Token (xoxb-...)", password=True)
     if not bot_token:
@@ -2176,7 +2176,7 @@ def _setup_webhooks():
     print_warning("   internet. For security, run the gateway in a sandboxed environment")
     print_warning("   (Docker, VM, etc.) to limit blast radius from prompt injection.")
     print()
-    print_info("   Full guide: https://jue-agent.nousresearch.com/docs/user-guide/messaging/webhooks/")
+    print_info("   Full guide: TODO")
     print()
 
     port = prompt("Webhook port (default 8644)")
@@ -2203,7 +2203,7 @@ def _setup_webhooks():
     print_info("      http://your-server:8644/webhooks/<route-name>")
     print()
     print_info("   Route configuration guide:")
-    print_info("   https://jue-agent.nousresearch.com/docs/user-guide/messaging/webhooks/#configuring-routes")
+    print_info("   TODO")
     print()
     print_info("   Open config in your editor:  jue config edit")
 
@@ -2896,7 +2896,7 @@ def run_setup_wizard(args):
                         Colors.MAGENTA,
                     )
                 )
-                print(color(f"│     ⚕ Jue Setup — {label:<34s} │", Colors.MAGENTA))
+                print(color(f"│     Jue Setup — {label:<34s} │", Colors.MAGENTA))
                 print(
                     color(
                         "└─────────────────────────────────────────────────────────┘",
@@ -2932,7 +2932,7 @@ def run_setup_wizard(args):
     )
     print(
         color(
-            "│             ⚕ Jue Agent Setup Wizard                │", Colors.MAGENTA
+            "│             Jue Agent Setup Wizard                │", Colors.MAGENTA
         )
     )
     print(

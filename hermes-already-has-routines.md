@@ -149,11 +149,11 @@ jue webhook subscribe pr-review \
   --deliver github_comment
 ```
 
-Full automation templates gallery: [jue-agent.nousresearch.com/docs/guides/automation-templates](https://jue-agent.nousresearch.com/docs/guides/automation-templates)
+Full automation templates gallery: [jue-agent.nousresearch.com/docs/guides/automation-templates](TODO)
 
-Documentation: [jue-agent.nousresearch.com](https://jue-agent.nousresearch.com)
+Documentation: [jue-agent.nousresearch.com](https://github.com/miao339/jue-agent)
 
-GitHub: [github.com/NousResearch/hermes-agent](https://github.com/NousResearch/hermes-agent)
+GitHub: [github.com/miao339/jue-agent](https://github.com/miao339/jue-agent)
 
 ---
 

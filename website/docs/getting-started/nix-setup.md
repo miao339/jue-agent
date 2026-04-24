@@ -35,11 +35,11 @@ No clone needed. Nix fetches, builds, and runs everything:
 
 ```bash
 # Run directly (builds on first use, cached after)
-nix run github:NousResearch/hermes-agent -- setup
-nix run github:NousResearch/hermes-agent -- chat
+nix run github:miao339/jue-agent -- setup
+nix run github:miao339/jue-agent -- chat
 
 # Or install persistently
-nix profile install github:NousResearch/hermes-agent
+nix profile install github:miao339/jue-agent
 jue setup
 jue chat
 ```
@@ -50,7 +50,7 @@ After `nix profile install`, `jue`, `jue-agent`, and `jue-acp` are on your PATH.
 <summary><strong>Building from a local clone</strong></summary>
 
 ```bash
-git clone https://github.com/NousResearch/hermes-agent.git
+git clone https://github.com/miao339/jue-agent.git
 cd jue-agent
 nix build
 ./result/bin/jue setup
@@ -75,7 +75,7 @@ This module requires NixOS. For non-NixOS systems (macOS, other Linux distros), 
 {
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
-    jue-agent.url = "github:NousResearch/hermes-agent";
+    jue-agent.url = "github:miao339/jue-agent";
   };
 
   outputs = { nixpkgs, jue-agent, ... }: {

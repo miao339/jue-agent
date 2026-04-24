@@ -13,7 +13,7 @@ Get Jue Agent up and running in under two minutes with the one-line installer.
 ### Linux / macOS / WSL2
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/NousResearch/hermes-agent/main/scripts/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/miao339/jue-agent/main/scripts/install.sh | bash
 ```
 
 ### Android / Termux
@@ -21,7 +21,7 @@ curl -fsSL https://raw.githubusercontent.com/NousResearch/hermes-agent/main/scri
 Jue now ships a Termux-aware installer path too:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/NousResearch/hermes-agent/main/scripts/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/miao339/jue-agent/main/scripts/install.sh | bash
 ```
 
 The installer detects Termux automatically and switches to a tested Android flow:

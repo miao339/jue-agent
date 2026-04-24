@@ -156,7 +156,7 @@ _PROVIDER_VISION_MODELS: Dict[str, str] = {
 
 # OpenRouter app attribution headers
 _OR_HEADERS = {
-    "HTTP-Referer": "https://jue-agent.nousresearch.com",
+    "HTTP-Referer": "https://github.com/miao339/jue-agent",
     "X-OpenRouter-Title": "Jue Agent",
     "X-OpenRouter-Categories": "productivity,cli-agent",
 }
@@ -166,7 +166,7 @@ _OR_HEADERS = {
 from hermes_cli import __version__ as _JUE_VERSION
 
 _AI_GATEWAY_HEADERS = {
-    "HTTP-Referer": "https://jue-agent.nousresearch.com",
+    "HTTP-Referer": "https://github.com/miao339/jue-agent",
     "X-Title": "Jue Agent",
     "User-Agent": f"JueAgent/{_JUE_VERSION}",
 }

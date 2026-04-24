@@ -4,13 +4,13 @@ import type * as Preset from '@docusaurus/preset-classic';
 
 const config: Config = {
   title: 'Jue Agent',
-  tagline: 'The self-improving AI agent',
+  tagline: 'Judgment-based AI agent framework',
   favicon: 'img/favicon.ico',
 
-  url: 'https://jue-agent.nousresearch.com',
-  baseUrl: '/docs/',
+  url: 'https://miao339.github.io',
+  baseUrl: '/jue-agent/',
 
-  organizationName: 'NousResearch',
+  organizationName: 'miao339',
   projectName: 'jue-agent',
 
   onBrokenLinks: 'warn',
@@ -51,7 +51,7 @@ const config: Config = {
         docs: {
           routeBasePath: '/',  // Docs at the root of /docs/
           sidebarPath: './sidebars.ts',
-          editUrl: 'https://github.com/NousResearch/hermes-agent/edit/main/website/',
+          editUrl: 'https://github.com/miao339/jue-agent/edit/main/website/',
         },
         blog: false,
         theme: {
@@ -92,18 +92,13 @@ const config: Config = {
           position: 'left',
         },
         {
-          href: 'https://jue-agent.nousresearch.com',
+          href: 'https://github.com/miao339/jue-agent',
           label: 'Home',
           position: 'right',
         },
         {
-          href: 'https://github.com/NousResearch/hermes-agent',
+          href: 'https://github.com/miao339/jue-agent',
           label: 'GitHub',
-          position: 'right',
-        },
-        {
-          href: 'https://discord.gg/NousResearch',
-          label: 'Discord',
           position: 'right',
         },
       ],
@@ -123,20 +118,18 @@ const config: Config = {
         {
           title: 'Community',
           items: [
-            { label: 'Discord', href: 'https://discord.gg/NousResearch' },
-            { label: 'GitHub Discussions', href: 'https://github.com/NousResearch/hermes-agent/discussions' },
+            { label: 'GitHub Discussions', href: 'https://github.com/miao339/jue-agent/discussions' },
             { label: 'Skills Hub', href: 'https://agentskills.io' },
           ],
         },
         {
           title: 'More',
           items: [
-            { label: 'GitHub', href: 'https://github.com/NousResearch/hermes-agent' },
-            { label: 'Nous Research', href: 'https://nousresearch.com' },
+            { label: 'GitHub', href: 'https://github.com/miao339/jue-agent' },
           ],
         },
       ],
-      copyright: `Built by <a href="https://nousresearch.com">Nous Research</a> · MIT License · ${new Date().getFullYear()}`,
+      copyright: `Jue judgment architecture by River (Zuduo Wei) · Based on Hermes Agent (MIT) · ${new Date().getFullYear()}`,
     },
     prism: {
       theme: prismThemes.github,

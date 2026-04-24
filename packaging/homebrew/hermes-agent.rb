@@ -1,11 +1,11 @@
 class JueAgent < Formula
   include Language::Python::Virtualenv
 
-  desc "Self-improving AI agent that creates skills from experience"
-  homepage "https://jue-agent.nousresearch.com"
+  desc "Judgment-based AI agent framework forked from Hermes Agent"
+  homepage "https://github.com/miao339/jue-agent"
   # Stable source should point at the semver-named sdist asset attached by
   # scripts/release.py, not the CalVer tag tarball.
-  url "https://github.com/NousResearch/hermes-agent/releases/download/v2026.3.30/jue_agent-0.6.0.tar.gz"
+  url "https://github.com/miao339/jue-agent/releases/download/v2026.3.30/jue_agent-0.6.0.tar.gz"
   sha256 "<replace-with-release-asset-sha256>"
   license "MIT"
 

@@ -7,13 +7,13 @@ license: MIT
 metadata:
   jue:
     tags: [jue, setup, configuration, multi-agent, spawning, cli, gateway, development]
-    homepage: https://github.com/NousResearch/hermes-agent
+    homepage: https://github.com/miao339/jue-agent
     related_skills: [claude-code, codex, opencode]
 ---
 
 # Jue Agent
 
-Jue Agent is an open-source AI agent framework by Nous Research that runs in your terminal, messaging platforms, and IDEs. It belongs to the same category as Claude Code (Anthropic), Codex (OpenAI), and OpenClaw — autonomous coding and task-execution agents that use tool calling to interact with your system. Jue works with any LLM provider (OpenRouter, Anthropic, OpenAI, DeepSeek, local models, and 15+ others) and runs on Linux, macOS, and WSL.
+Jue Agent is a judgment-based AI agent framework by River (Zuduo Wei), forked from Hermes Agent under MIT. It runs in your terminal, messaging platforms, and IDEs. It belongs to the same category as Claude Code (Anthropic), Codex (OpenAI), and other autonomous coding and task-execution agents that use tool calling to interact with your system. Jue works with any LLM provider (OpenRouter, Anthropic, OpenAI, DeepSeek, local models, and 15+ others) and runs on Linux, macOS, and WSL.
 
 What makes Jue different:
 
@@ -28,13 +28,13 @@ People use Jue for software development, research, system administration, data a
 
 **This skill helps you work with Jue Agent effectively** — setting it up, configuring features, spawning additional agent instances, troubleshooting issues, finding the right commands and settings, and understanding how the system works when you need to extend or contribute to it.
 
-**Docs:** https://jue-agent.nousresearch.com/docs/
+**Docs:** TODO
 
 ## Quick Start
 
 ```bash
 # Install
-curl -fsSL https://raw.githubusercontent.com/NousResearch/hermes-agent/main/scripts/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/miao339/jue-agent/main/scripts/install.sh | bash
 
 # Interactive chat (default)
 jue
@@ -150,7 +150,7 @@ jue gateway setup        Configure platforms
 
 Supported platforms: Telegram, Discord, Slack, WhatsApp, Signal, Email, SMS, Matrix, Mattermost, Home Assistant, DingTalk, Feishu, WeCom, BlueBubbles (iMessage), Weixin (WeChat), API Server, Webhooks. Open WebUI connects via the API Server adapter.
 
-Platform docs: https://jue-agent.nousresearch.com/docs/user-guide/messaging/
+Platform docs: TODO
 
 ### Sessions
 
@@ -340,7 +340,7 @@ Edit with `jue config edit` or `jue config set section.key value`.
 | `delegation` | `model`, `provider`, `base_url`, `api_key`, `max_iterations` (50), `reasoning_effort` |
 | `checkpoints` | `enabled`, `max_snapshots` (50) |
 
-Full config reference: https://jue-agent.nousresearch.com/docs/user-guide/configuration
+Full config reference: TODO
 
 ### Providers
 
@@ -371,7 +371,7 @@ Full config reference: https://jue-agent.nousresearch.com/docs/user-guide/config
 | Custom endpoint | Config | `model.base_url` + `model.api_key` in config.yaml |
 | GitHub Copilot ACP | External | `COPILOT_CLI_PATH` or Copilot CLI |
 
-Full provider docs: https://jue-agent.nousresearch.com/docs/integrations/providers
+Full provider docs: TODO
 
 ### Toolsets
 
@@ -578,18 +578,18 @@ jue config set auxiliary.vision.model <model_name>
 
 | Looking for... | Location |
 |----------------|----------|
-| Config options | `jue config edit` or [Configuration docs](https://jue-agent.nousresearch.com/docs/user-guide/configuration) |
-| Available tools | `jue tools list` or [Tools reference](https://jue-agent.nousresearch.com/docs/reference/tools-reference) |
-| Slash commands | `/help` in session or [Slash commands reference](https://jue-agent.nousresearch.com/docs/reference/slash-commands) |
-| Skills catalog | `jue skills browse` or [Skills catalog](https://jue-agent.nousresearch.com/docs/reference/skills-catalog) |
-| Provider setup | `jue model` or [Providers guide](https://jue-agent.nousresearch.com/docs/integrations/providers) |
-| Platform setup | `jue gateway setup` or [Messaging docs](https://jue-agent.nousresearch.com/docs/user-guide/messaging/) |
-| MCP servers | `jue mcp list` or [MCP guide](https://jue-agent.nousresearch.com/docs/user-guide/features/mcp) |
-| Profiles | `jue profile list` or [Profiles docs](https://jue-agent.nousresearch.com/docs/user-guide/profiles) |
-| Cron jobs | `jue cron list` or [Cron docs](https://jue-agent.nousresearch.com/docs/user-guide/features/cron) |
-| Memory | `jue memory status` or [Memory docs](https://jue-agent.nousresearch.com/docs/user-guide/features/memory) |
-| Env variables | `jue config env-path` or [Env vars reference](https://jue-agent.nousresearch.com/docs/reference/environment-variables) |
-| CLI commands | `jue --help` or [CLI reference](https://jue-agent.nousresearch.com/docs/reference/cli-commands) |
+| Config options | `jue config edit` or [Configuration docs](TODO) |
+| Available tools | `jue tools list` or [Tools reference](TODO) |
+| Slash commands | `/help` in session or [Slash commands reference](TODO) |
+| Skills catalog | `jue skills browse` or [Skills catalog](TODO) |
+| Provider setup | `jue model` or [Providers guide](TODO) |
+| Platform setup | `jue gateway setup` or [Messaging docs](TODO) |
+| MCP servers | `jue mcp list` or [MCP guide](TODO) |
+| Profiles | `jue profile list` or [Profiles docs](TODO) |
+| Cron jobs | `jue cron list` or [Cron docs](TODO) |
+| Memory | `jue memory status` or [Memory docs](TODO) |
+| Env variables | `jue config env-path` or [Env vars reference](TODO) |
+| CLI commands | `jue --help` or [CLI reference](TODO) |
 | Gateway logs | `~/.jue/logs/gateway.log` |
 | Session files | `~/.jue/sessions/` or `jue sessions browse` |
 | Source code | `~/.jue/jue-agent/` |
@@ -598,7 +598,7 @@ jue config set auxiliary.vision.model <model_name>
 
 ## Contributor Quick Reference
 
-For occasional contributors and PR authors. Full developer docs: https://jue-agent.nousresearch.com/docs/developer-guide/
+For occasional contributors and PR authors. Full developer docs: TODO
 
 ### Project Layout
 

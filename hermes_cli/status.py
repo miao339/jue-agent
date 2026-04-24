@@ -89,7 +89,7 @@ def show_status(args):
     
     print()
     print(color("┌─────────────────────────────────────────────────────────┐", Colors.CYAN))
-    print(color("│                 ⚕ Jue Agent Status                  │", Colors.CYAN))
+    print(color("│                 Jue Agent Status                  │", Colors.CYAN))
     print(color("└─────────────────────────────────────────────────────────┘", Colors.CYAN))
     
     # =========================================================================

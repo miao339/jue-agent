@@ -2702,7 +2702,7 @@ def check_for_skill_updates(
 # Jue centralized index source
 # ---------------------------------------------------------------------------
 
-JUE_INDEX_URL = "https://jue-agent.nousresearch.com/docs/api/skills-index.json"
+JUE_INDEX_URL = "TODO"
 JUE_INDEX_CACHE_FILE = INDEX_CACHE_DIR / "jue-index.json"
 JUE_INDEX_TTL = 6 * 3600  # 6 hours
 

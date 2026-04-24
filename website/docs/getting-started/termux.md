@@ -46,7 +46,7 @@ That does not stop Jue from working well as a phone-native CLI agent — it just
 Jue now ships a Termux-aware installer path:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/NousResearch/hermes-agent/main/scripts/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/miao339/jue-agent/main/scripts/install.sh | bash
 ```
 
 On Termux, the installer automatically:
@@ -80,7 +80,7 @@ Why these packages?
 ### 2. Clone Jue
 
 ```bash
-git clone --recurse-submodules https://github.com/NousResearch/hermes-agent.git
+git clone --recurse-submodules https://github.com/miao339/jue-agent.git
 cd jue-agent
 ```
 

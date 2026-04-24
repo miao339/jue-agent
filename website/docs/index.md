@@ -2,23 +2,23 @@
 slug: /
 sidebar_position: 0
 title: "Jue Agent Documentation"
-description: "The self-improving AI agent built by Nous Research. A built-in learning loop that creates skills from experience, improves them during use, and remembers across sessions."
+description: "Judgment-based AI agent framework forked from Hermes Agent."
 hide_table_of_contents: true
 displayed_sidebar: docs
 ---
 
-# Jue Agent
+# Jue-Agent（觉）
 
-The self-improving AI agent built by [Nous Research](https://nousresearch.com). The only agent with a built-in learning loop — it creates skills from experience, improves them during use, nudges itself to persist knowledge, and builds a deepening model of who you are across sessions.
+Jue-Agent is a judgment-based AI agent framework forked from Hermes Agent. It keeps the practical agent foundation of tools, skills, gateway platforms, and terminal workflows, then adds a judgment architecture that records why an action was appropriate in context.
 
 <div style={{display: 'flex', gap: '1rem', marginBottom: '2rem', flexWrap: 'wrap'}}>
   <a href="/docs/getting-started/installation" style={{display: 'inline-block', padding: '0.6rem 1.2rem', backgroundColor: '#FFD700', color: '#07070d', borderRadius: '8px', fontWeight: 600, textDecoration: 'none'}}>Get Started →</a>
-  <a href="https://github.com/NousResearch/hermes-agent" style={{display: 'inline-block', padding: '0.6rem 1.2rem', border: '1px solid rgba(255,215,0,0.2)', borderRadius: '8px', textDecoration: 'none'}}>View on GitHub</a>
+  <a href="https://github.com/miao339/jue-agent" style={{display: 'inline-block', padding: '0.6rem 1.2rem', border: '1px solid rgba(255,215,0,0.2)', borderRadius: '8px', textDecoration: 'none'}}>View on GitHub</a>
 </div>
 
 ## What is Jue Agent?
 
-It's not a coding copilot tethered to an IDE or a chatbot wrapper around a single API. It's an **autonomous agent** that gets more capable the longer it runs. It lives wherever you put it — a $5 VPS, a GPU cluster, or serverless infrastructure (Daytona, Modal) that costs nearly nothing when idle. Talk to it from Telegram while it works on a cloud VM you never SSH into yourself. It's not tied to your laptop.
+Hermes accumulates procedures through skills. Jue accumulates judgment through JudgmentTriplets and Harness records. A system with recorded judgment can analogize when the next situation is similar but not identical; a system with only procedures can only repeat the procedure.
 
 ## Quick Links
 
@@ -48,10 +48,10 @@ It's not a coding copilot tethered to an IDE or a chatbot wrapper around a singl
 - **A closed learning loop** — Agent-curated memory with periodic nudges, autonomous skill creation, skill self-improvement during use, FTS5 cross-session recall with LLM summarization, and [Honcho](https://github.com/plastic-labs/honcho) dialectic user modeling
 - **Runs anywhere, not just your laptop** — 6 terminal backends: local, Docker, SSH, Daytona, Singularity, Modal. Daytona and Modal offer serverless persistence — your environment hibernates when idle, costing nearly nothing
 - **Lives where you do** — CLI, Telegram, Discord, Slack, WhatsApp, Signal, Matrix, Mattermost, Email, SMS, DingTalk, Feishu, WeCom, BlueBubbles, Home Assistant — 15+ platforms from one gateway
-- **Built by model trainers** — Created by [Nous Research](https://nousresearch.com), the lab behind Jue, Nomos, and Psyche. Works with [Nous Portal](https://portal.nousresearch.com), [OpenRouter](https://openrouter.ai), OpenAI, or any endpoint
+- **Judgment architecture** — ROOT_PARADIGM + SOUL shape the agent's default stance, while JudgmentTriplet + Harness records accumulate domain judgment from real tasks
 - **Scheduled automations** — Built-in cron with delivery to any platform
 - **Delegates & parallelizes** — Spawn isolated subagents for parallel workstreams. Programmatic Tool Calling via `execute_code` collapses multi-step pipelines into single inference calls
 - **Open standard skills** — Compatible with [agentskills.io](https://agentskills.io). Skills are portable, shareable, and community-contributed via the Skills Hub
 - **Full web control** — Search, extract, browse, vision, image generation, TTS
 - **MCP support** — Connect to any MCP server for extended tool capabilities
-- **Research-ready** — Batch processing, trajectory export, RL training with Atropos. Built by [Nous Research](https://nousresearch.com) — the lab behind Jue, Nomos, and Psyche models
+- **Research-ready** — Batch processing, trajectory export, and RL training paths inherited from Hermes Agent

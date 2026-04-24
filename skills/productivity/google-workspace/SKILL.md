@@ -7,7 +7,7 @@ license: MIT
 metadata:
   jue:
     tags: [Google, Gmail, Calendar, Drive, Sheets, Docs, Contacts, Email, OAuth]
-    homepage: https://github.com/NousResearch/hermes-agent
+    homepage: https://github.com/miao339/jue-agent
     related_skills: [himalaya]
 ---
 
